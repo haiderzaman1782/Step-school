@@ -17,7 +17,7 @@ const PORT = process.env.PORT || 3001;
 
 // Middleware
 const allowedOrigins = process.env.CORS_ORIGIN
-  ? process.env.CORS_ORIGIN.split(',').map(origin => origin.trim())
+  ? process.env.CORS_ORIGIN.split(',').map(origin => origin.trim().replace(/\/$/, ''))
   : ['https://step-school.vercel.app'];
 
 app.use(cors({
@@ -27,13 +27,16 @@ app.use(cors({
       return callback(null, true);
     }
 
+    // Normalize incoming origin by removing trailing slash
+    const normalizedOrigin = origin.replace(/\/$/, '');
+
     // Check if origin is in allowed list or if all are allowed
-    const isAllowed = allowedOrigins.includes('*') || allowedOrigins.includes(origin);
+    const isAllowed = allowedOrigins.includes('*') || allowedOrigins.includes(normalizedOrigin);
 
     if (isAllowed) {
       callback(null, true);
     } else {
-      console.log(`CORS blocked origin: "${origin}" (against list: ${JSON.stringify(allowedOrigins)})`);
+      console.log(`CORS blocked origin: "${origin}" (normalized: "${normalizedOrigin}") against list: ${JSON.stringify(allowedOrigins)}`);
       callback(new Error('Not allowed by CORS'));
     }
   },
