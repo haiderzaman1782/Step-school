@@ -18,16 +18,24 @@ const PORT = process.env.PORT || 3001;
 // Middleware
 const allowedOrigins = process.env.CORS_ORIGIN
   ? process.env.CORS_ORIGIN.split(',').map(origin => origin.trim())
-  : ['https://step-school.vercel.app'];
+  : ['http://localhost:5173'];
+
+console.log('Parsed allowed origins:', allowedOrigins);
 
 app.use(cors({
   origin: (origin, callback) => {
     // Allow requests with no origin (like mobile apps or curl requests)
-    if (!origin) return callback(null, true);
-    if (allowedOrigins.indexOf(origin) !== -1 || allowedOrigins.includes('*')) {
+    if (!origin) {
+      return callback(null, true);
+    }
+
+    // Check if origin is in allowed list or if all are allowed
+    const isAllowed = allowedOrigins.includes('*') || allowedOrigins.includes(origin);
+
+    if (isAllowed) {
       callback(null, true);
     } else {
-      console.log('CORS blocked origin:', origin);
+      console.log(`CORS blocked origin: "${origin}" (against list: ${JSON.stringify(allowedOrigins)})`);
       callback(new Error('Not allowed by CORS'));
     }
   },
@@ -39,7 +47,8 @@ app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 
 // Request logging middleware
 app.use((req, res, next) => {
-  console.log(`${new Date().toISOString()} - ${req.method} ${req.url} - Origin: ${req.get('Origin')}`);
+  const origin = req.get('Origin') || 'No Origin';
+  console.log(`${new Date().toISOString()} - ${req.method} ${req.url} - Origin: ${origin}`);
   next();
 });
 // Serve static files from uploads directory
