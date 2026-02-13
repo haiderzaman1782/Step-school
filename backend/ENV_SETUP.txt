@@ -1,0 +1,36 @@
+===========================================
+BACKEND .ENV FILE SETUP
+===========================================
+
+Create a file named ".env" in the backend folder with the following content:
+
+-------------------------------------------
+# Database Configuration (Supabase Connection Pooler)
+DB_HOST=aws-1-ap-northeast-2.pooler.supabase.com
+DB_PORT=6543
+DB_NAME=postgres
+DB_USER=postgres.arhkvqzzfuenpgyivtie
+DB_PASSWORD=your_password_here
+
+# Server Configuration
+PORT=3001
+NODE_ENV=development
+
+# CORS Configuration
+CORS_ORIGIN=http://localhost:5173
+-------------------------------------------
+
+IMPORTANT: Replace "your_password_here" with your actual Supabase database password!
+
+Note: This configuration uses Supabase's connection pooler (transaction mode).
+The pooler allows better connection management and scalability.
+
+Steps:
+1. Open backend/.env file (create it if it doesn't exist)
+2. Copy the content above
+3. Replace "your_password_here" with your PostgreSQL password
+4. Save the file
+5. Restart your backend server
+
+The .env file is in .gitignore, so it won't be committed to git.
+

@@ -1,0 +1,3 @@
+# This directory stores uploaded avatar files
+# Avatar files are stored locally and served via the /uploads/avatars endpoint
+
