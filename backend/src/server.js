@@ -18,7 +18,7 @@ const PORT = process.env.PORT || 3001;
 // Middleware
 const allowedOrigins = process.env.CORS_ORIGIN
   ? process.env.CORS_ORIGIN.split(',').map(origin => origin.trim())
-  : ['https://step-school.onrender.com'];
+  : ['https://step-school.vercel.app'];
 
 app.use(cors({
   origin: (origin, callback) => {
