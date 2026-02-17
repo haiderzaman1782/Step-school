@@ -29,6 +29,11 @@ export const login = async (req, res) => {
             return res.status(403).json({ error: 'Account is deactivated' });
         }
 
+        if (!process.env.JWT_SECRET) {
+            console.error('CRITICAL ERROR: JWT_SECRET is not defined in environment variables.');
+            return res.status(500).json({ error: 'Server configuration error: JWT_SECRET is missing.' });
+        }
+
         const token = jwt.sign(
             { id: user.id, role: user.role, email: user.email },
             process.env.JWT_SECRET,

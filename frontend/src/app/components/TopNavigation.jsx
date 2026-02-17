@@ -124,8 +124,8 @@ export function TopNavigation({
           {/* User Profile Popover */}
           <Popover>
             <PopoverTrigger asChild>
-              <button className="hidden sm:block cursor-pointer md:hidden lg:flex items-center align-center gap-3 pl-4 border-l border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800/50 p-1 rounded-lg transition-colors outline-none">
-                <div className="text-right">
+              <button className="flex cursor-pointer items-center align-center gap-3 pl-4 border-l border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800/50 p-1 rounded-lg transition-colors outline-none">
+                <div className="text-right hidden sm:block">
                   <p className="text-sm font-medium text-gray-900 dark:text-white">
                     {adminUser?.fullName || "User"}
                   </p>

@@ -12,6 +12,10 @@ export const authenticateToken = (req, res, next) => {
     }
 
     try {
+        if (!process.env.JWT_SECRET) {
+            console.error('CRITICAL ERROR: JWT_SECRET is not defined in environment variables.');
+            return res.status(500).json({ error: 'Server configuration error.' });
+        }
         const decoded = jwt.verify(token, process.env.JWT_SECRET);
         req.user = decoded;
         next();
