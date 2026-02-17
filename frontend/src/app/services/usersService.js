@@ -22,12 +22,15 @@ export const usersService = {
     formData.append('phone', userData.phone || '');
     formData.append('role', userData.role || 'customer');
     formData.append('status', userData.status || 'active');
-    
+    if (userData.password) {
+      formData.append('password', userData.password);
+    }
+
     // Append avatar file if it's a File object
     if (userData.avatar instanceof File) {
       formData.append('avatar', userData.avatar);
     }
-    
+
     const response = await api.post('/users', formData, {
       headers: {
         'Content-Type': 'multipart/form-data',
@@ -43,12 +46,12 @@ export const usersService = {
     formData.append('phone', userData.phone || '');
     formData.append('role', userData.role || '');
     formData.append('status', userData.status || '');
-    
+
     // Append avatar file if it's a File object
     if (userData.avatar instanceof File) {
       formData.append('avatar', userData.avatar);
     }
-    
+
     const response = await api.put(`/users/${id}`, formData, {
       headers: {
         'Content-Type': 'multipart/form-data',

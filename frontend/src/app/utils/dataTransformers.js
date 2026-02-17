@@ -5,25 +5,24 @@
 /* transformAppointment removed */
 
 /**
- * Transform backend payment to frontend format
- * Maintains exact field names expected by frontend components
+ * Transform backend voucher to frontend format
  */
-export const transformPayment = (payment) => {
-  if (!payment) return null;
+export const transformVoucher = (v) => {
+  if (!v) return null;
   return {
-    id: (payment.id || payment.transactionid || payment.transactionId)?.toString() || `PAY${String(Date.now()).slice(-6)}`,
-    customerName: payment.customerName || payment.customername || 'Unknown',
-    service: payment.service || 'N/A',
-    amount: parseFloat(payment.amount) || 0,
-    status: payment.status || 'pending',
-    date: payment.date || payment.created_at?.split('T')[0] || new Date().toISOString().split('T')[0],
-    timestamp: payment.timestamp || payment.created_at || new Date().toISOString(),
-    paymentMethod: payment.paymentMethod || payment.paymentmethod || 'Other',
-    transactionId: payment.transactionId || payment.transactionid || `txn_${payment.id}`,
-    callReference: payment.callReference || payment.callreference || 'N/A',
-    invoiceNumber: payment.invoiceNumber || payment.invoicenumber || 'N/A',
-    failureReason: payment.failureReason || payment.failurereason || '',
-    userId: payment.userId || payment.userid || payment.user_id || null,
+    id: v.id,
+    voucherNumber: v.voucher_number,
+    clientId: v.client_id,
+    clientName: v.client_name,
+    amount: parseFloat(v.amount) || 0,
+    status: v.status || 'pending',
+    dueDate: v.due_date,
+    paymentTypeId: v.payment_type_id,
+    paymentTypeName: v.payment_type_name,
+    description: v.description || '',
+    attachmentUrl: v.attachment_url || null,
+    createdAt: v.created_at,
+    updatedAt: v.updated_at
   };
 };
 
@@ -35,15 +34,15 @@ export const transformPayment = (payment) => {
 
 /**
  * Transform backend user to frontend format
- * Maintains exact field names expected by frontend components
  */
-export const transformUser = (user, stats = {}) => {
+export const transformUser = (user) => {
+  if (!user) return null;
   return {
-    id: user.id?.toString() || `USR${String(user.id).padStart(3, '0')}`,
-    fullName: user.fullname || 'Unknown User',
+    id: user.id?.toString(),
+    fullName: user.full_name || user.fullname || user.name || 'Unknown User',
     email: user.email || '',
     phone: user.phone || '',
-    role: user.role || 'customer',
+    role: user.role === 'customer' ? 'client' : (user.role || 'client'),
     status: user.status || 'active',
     lastActivity: user.lastactivity || user.updated_at || user.created_at,
     createdAt: user.createdat || user.created_at,
@@ -52,12 +51,11 @@ export const transformUser = (user, stats = {}) => {
         ? user.avatar
         : user.avatar.startsWith('/uploads')
           ? `${(import.meta.env.VITE_API_URL || 'http://localhost:3001').replace('/api', '')}${user.avatar}`
-          : `https://ui-avatars.com/api/?name=${encodeURIComponent(user.fullname || 'User')}&background=random`)
-      : `https://ui-avatars.com/api/?name=${encodeURIComponent(user.fullname || 'User')}&background=random`,
+          : `https://ui-avatars.com/api/?name=${encodeURIComponent(user.full_name || user.fullname || user.email || 'User')}&background=random`)
+      : `https://ui-avatars.com/api/?name=${encodeURIComponent(user.full_name || user.fullname || user.email || 'User')}&background=random`,
     failedCalls: user.failedcalls || 0,
-    failedPayments: user.failedpayments || 0,
-    totalCalls: user.totalcalls || 0,
-    totalPayments: user.totalpayments || 0,
+    overdueVouchers: user.overduevouchers || 0,
+    totalVouchers: user.totalvouchers || 0,
   };
 };
 

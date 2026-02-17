@@ -101,6 +101,7 @@ export const createUser = async (req, res) => {
       return res.status(400).json({ error: 'User with this email already exists' });
     }
 
+    console.log(`[UsersController] Creating user for email: ${email}`);
     const user = await User.create({
       fullName: fullName || name,
       email,
@@ -109,6 +110,7 @@ export const createUser = async (req, res) => {
       status: status || 'active',
       avatar: avatarFilename, // Store filename instead of base64
     });
+    console.log(`[UsersController] User created successfully with ID: ${user.id}`);
 
     res.status(201).json({
       ...user,
@@ -149,6 +151,7 @@ export const updateUser = async (req, res) => {
       }
     }
 
+    console.log(`[UsersController] Updating user ID: ${id}`);
     const user = await User.update(id, {
       fullName: fullName || name,
       email,
@@ -157,6 +160,7 @@ export const updateUser = async (req, res) => {
       status,
       avatar: avatarFilename, // Store filename instead of base64
     });
+    console.log(`[UsersController] User updated successfully: ${id}`);
 
     res.json({
       ...user,
@@ -185,7 +189,9 @@ export const deleteUser = async (req, res) => {
       await deleteAvatarFile(user.avatar);
     }
 
+    console.log(`[UsersController] Deleting user ID: ${id}`);
     const deletedUser = await User.delete(id);
+    console.log(`[UsersController] User deleted successfully: ${id}`);
 
     res.json({ message: 'User deleted successfully', user: deletedUser });
   } catch (error) {

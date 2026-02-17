@@ -12,8 +12,8 @@ import { formatDistanceToNow } from "date-fns";
 
 const menuItems = [
   { id: "dashboard", label: "Dashboard", icon: LayoutDashboard },
-  { id: "payments", label: "Payments", icon: CreditCard },
-  { id: "users", label: "Users", icon: Users },
+  { id: "payments", label: "Vouchers", icon: CreditCard },
+  { id: "users", label: "Clients", icon: Users },
   { id: "settings", label: "Settings", icon: Settings },
 ];
 
@@ -49,12 +49,17 @@ export function TopNavigation({
                   <CreditCard className="w-6 h-6 text-white" />
                 </div>
                 <div>
-                  <h2 className="font-bold text-gray-900 dark:text-white">AI Booking</h2>
-                  <p className="text-xs text-gray-500 dark:text-gray-400">Voice System</p>
+                  <h2 className="font-bold text-gray-900 dark:text-white">Step School</h2>
+                  <p className="text-xs text-gray-500 dark:text-gray-400">Payment Portal</p>
                 </div>
               </div>
               <nav className="space-y-1">
-                {menuItems.map((item) => {
+                {menuItems.filter(item => {
+                  if (adminUser?.role === 'client') {
+                    return ['dashboard', 'settings'].includes(item.id);
+                  }
+                  return true;
+                }).map((item) => {
                   const Icon = item.icon;
                   const isActive = activeSection === item.id;
 
@@ -78,18 +83,20 @@ export function TopNavigation({
                   );
                 })}
 
-                <div className="pt-4 mt-4 border-t border-gray-100 dark:border-gray-800">
-                  <button
-                    onClick={() => {
-                      onQuickAdd();
-                      setMobileMenuOpen(false);
-                    }}
-                    className="w-full flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 text-white py-3 px-4 rounded-xl shadow-lg shadow-blue-500/20 transition-all duration-200 active:scale-95 group"
-                  >
-                    <Plus className="w-4 h-4 text-white" />
-                    <span className="font-bold">Quick Add</span>
-                  </button>
-                </div>
+                {adminUser?.role === 'accountant' && (
+                  <div className="pt-4 mt-4 border-t border-gray-100 dark:border-gray-800">
+                    <button
+                      onClick={() => {
+                        onQuickAdd();
+                        setMobileMenuOpen(false);
+                      }}
+                      className="w-full flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 text-white py-3 px-4 rounded-xl shadow-lg shadow-blue-500/20 transition-all duration-200 active:scale-95 group"
+                    >
+                      <Plus className="w-4 h-4 text-white" />
+                      <span className="font-bold">Quick Add</span>
+                    </button>
+                  </div>
+                )}
               </nav>
             </div>
           </SheetContent>
@@ -120,13 +127,14 @@ export function TopNavigation({
               <button className="hidden sm:block cursor-pointer md:hidden lg:flex items-center align-center gap-3 pl-4 border-l border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800/50 p-1 rounded-lg transition-colors outline-none">
                 <div className="text-right">
                   <p className="text-sm font-medium text-gray-900 dark:text-white">
-                    {adminUser?.username || "Admin"}
+                    {adminUser?.fullName || "User"}
                   </p>
-                  <p className="text-xs text-gray-500 dark:text-gray-400">Authorized User</p>
+                  <p className="text-xs text-gray-500 dark:text-gray-400 capitalize">{adminUser?.role || "Member"}</p>
                 </div>
                 <Avatar className="h-8 w-8 border-2 border-blue-100 dark:border-blue-900/30 cursor-pointer rounded-full bg-blue-100">
+                  <AvatarImage src={adminUser?.avatar} alt={adminUser?.fullName} />
                   <AvatarFallback className="text-blue-700 dark:text-blue-200 text-sm font-bold">
-                    {(adminUser?.username || "A")[0].toUpperCase()}
+                    {(adminUser?.fullName || "U")[0].toUpperCase()}
                   </AvatarFallback>
                 </Avatar>
               </button>
@@ -135,10 +143,10 @@ export function TopNavigation({
               <div className="space-y-1">
                 <div className="px-3 py-2 border-b border-gray-100 dark:border-gray-700 mb-1">
                   <p className="text-sm font-semibold text-gray-900 dark:text-white truncate">
-                    {adminUser?.username || "Administrator"}
+                    {adminUser?.fullName || "User"}
                   </p>
                   <p className="text-xs text-gray-500 dark:text-gray-400 truncate">
-                    {adminUser?.email || "admin@system.com"}
+                    {adminUser?.email}
                   </p>
                 </div>
 

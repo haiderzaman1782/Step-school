@@ -35,12 +35,12 @@ import { AreaChart, Area, BarChart, Bar, PieChart, Pie, Cell, XAxis, YAxis, Cart
 import { toast } from "sonner";
 import { formatDistanceToNow } from "date-fns";
 import { usersService } from "../services/usersService";
+import { vouchersService } from "../services/vouchersService";
+import { AlertTriangle } from "lucide-react";
 
 const roleColors = {
-  admin: "bg-blue-100 text-blue-800 border-blue-200 dark:bg-blue-900/30 dark:text-blue-400 dark:border-blue-800",
-  staff: "bg-purple-100 text-purple-800 border-purple-200 dark:bg-purple-900/30 dark:text-purple-400 dark:border-purple-800",
-  agent: "bg-teal-100 text-teal-800 border-teal-200 dark:bg-teal-900/30 dark:text-teal-400 dark:border-teal-800",
-  customer: "bg-gray-100 text-gray-800 border-gray-200 dark:bg-gray-900/30 dark:text-gray-400 dark:border-gray-800",
+  accountant: "bg-blue-100 text-blue-800 border-blue-200 dark:bg-blue-900/30 dark:text-blue-400 dark:border-blue-800",
+  client: "bg-gray-100 text-gray-800 border-gray-200 dark:bg-gray-900/30 dark:text-gray-400 dark:border-gray-800",
 };
 
 const statusColors = {
@@ -50,13 +50,14 @@ const statusColors = {
 };
 
 const roleIcons = {
-  admin: Shield,
-  staff: UsersIcon,
-  agent: UserCheck,
-  customer: UserCheck,
+  accountant: Shield,
+  client: UserCheck,
 };
 
-export function Users({ users, payments }) {
+export function Users() {
+  const [usersData, setUsersData] = useState([]);
+  const [vouchers, setVouchers] = useState([]);
+  const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
   const [roleFilter, setRoleFilter] = useState("all");
   const [statusFilter, setStatusFilter] = useState("all");
@@ -76,38 +77,48 @@ export function Users({ users, payments }) {
     fullName: '',
     email: '',
     phone: '',
-    role: 'customer',
+    role: 'client',
     status: 'active',
     avatar: null,
     avatarPreview: null,
   });
   const [editAvatarPreview, setEditAvatarPreview] = useState(null);
   const [editAvatarFile, setEditAvatarFile] = useState(null);
-  // Refs for file inputs
-  const fileInputRef = useRef(null);
-  const editFileInputRef = useRef(null);
-  // Filter out customers - only show admin, staff, and agent
-  const [usersData, setUsersData] = useState(users.filter(u => u.role !== "customer"));
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
 
-  // Update usersData when users prop changes
+  const fileInputRef = useRef(null);
+  const editFileInputRef = useRef(null);
+
+  const fetchData = async () => {
+    try {
+      setLoading(true);
+      const [uData, vData] = await Promise.all([
+        usersService.getAll(),
+        vouchersService.getAll()
+      ]);
+      setUsersData(uData.users || []);
+      setVouchers(vData);
+    } catch (error) {
+      toast.error("Failed to load user data");
+    } finally {
+      setLoading(false);
+    }
+  };
+
   useEffect(() => {
-    setUsersData(users.filter(u => u.role !== "customer"));
-  }, [users]);
+    fetchData();
+  }, []);
 
-  // Calculate metrics
-  const totalUsers = usersData.length;
-  const activeUsers = usersData.filter(u => u.status === "active").length;
-  const today = new Date().toISOString().split('T')[0];
-  const newUsersToday = usersData.filter(u => u.createdAt?.split('T')[0] === today).length;
-  const weekAgo = new Date();
-  weekAgo.setDate(weekAgo.getDate() - 7);
-  const newUsersThisWeek = usersData.filter(u => new Date(u.createdAt) >= weekAgo).length;
-  const blockedUsers = usersData.filter(u => u.status === "blocked" || u.status === "inactive").length;
+  useEffect(() => {
+    fetchData();
+  }, []);
 
-  // Suspicious users (multiple failed payments)
-  const suspiciousUsers = usersData.filter(u => u.failedPayments >= 2);
+  // Update suspicious users logic (e.g., users with overdue vouchers)
+  const suspiciousUsers = usersData.filter(u => {
+    const userVouchers = vouchers.filter(v => v.client_id === u.id);
+    return userVouchers.some(v => v.status === "overdue");
+  });
 
   // Filter and sort users
   let filteredUsers = usersData.filter(user => {
@@ -151,9 +162,9 @@ export function Users({ users, payments }) {
 
 
 
-  const getUserPayments = (userId) => {
-    return payments?.filter(payment =>
-      payment.userId === userId || payment.id === userId
+  const getUserVouchers = (userId) => {
+    return vouchers?.filter(v =>
+      v.client_id === userId || v.id === userId
     ) || [];
   };
 
@@ -539,16 +550,28 @@ export function Users({ users, payments }) {
     }
   };
 
-  // Chart data - only admin, staff, and agent
+  // Calculate metrics
+  const totalUsers = usersData.length;
+  const activeUsers = usersData.filter(user => user.status === 'active').length;
+  const newUsersToday = usersData.filter(user => {
+    const today = new Date().toISOString().split('T')[0];
+    return user.createdAt?.split('T')[0] === today;
+  }).length;
+  const newUsersThisWeek = usersData.filter(user => {
+    const weekAgo = new Date();
+    weekAgo.setDate(weekAgo.getDate() - 7);
+    return new Date(user.createdAt) >= weekAgo;
+  }).length;
+  const blockedUsers = usersData.filter(user => user.status === 'blocked').length;
+
   const roleDistributionData = [
-    { name: "Admin", value: usersData.filter(u => u.role === "admin").length, color: "#3b82f6" },
-    { name: "Staff", value: usersData.filter(u => u.role === "staff").length, color: "#8b5cf6" },
-    { name: "Agent", value: usersData.filter(u => u.role === "agent").length, color: "#14b8a6" }
-  ];
+    { name: "Accountant", value: usersData.filter(u => u.role === "accountant").length, color: "#3b82f6" },
+    { name: "Client", value: usersData.filter(u => u.role === "client").length, color: "#6b7280" }
+  ].filter(d => d.value > 0);
 
   return (
     <div className="space-y-4 sm:space-y-6">
-      {/* Suspicious Users Alert Banner */}
+      {/* Overdue Clients Alert Banner */}
       {suspiciousUsers.length > 0 && (
         <Card className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 p-2 sm:p-4 rounded-xl shadow-md dark:shadow-none">
           <CardContent className="p-4">
@@ -556,10 +579,10 @@ export function Users({ users, payments }) {
               <AlertTriangle className="w-5 h-5 text-red-600 dark:text-red-400 flex-shrink-0" />
               <div className="flex-1">
                 <p className="font-semibold text-red-900 dark:text-red-300">
-                  {suspiciousUsers.length} Suspicious User{suspiciousUsers.length > 1 ? 's' : ''} Detected
+                  {suspiciousUsers.length} Client{suspiciousUsers.length > 1 ? 's' : ''} with Overdue Vouchers
                 </p>
                 <p className="text-sm text-red-700 dark:text-red-400">
-                  Multiple failed calls or payments detected. Review required.
+                  Clients with unpaid overdue vouchers require attention.
                 </p>
               </div>
             </div>
@@ -580,7 +603,7 @@ export function Users({ users, payments }) {
         <MetricCard
           title="Active Users"
           value={activeUsers}
-          change={`${((activeUsers / totalUsers) * 100).toFixed(0)}% of total`}
+          change={`${((activeUsers / (totalUsers || 1)) * 100).toFixed(0)}% of total`}
           changeType="positive"
           icon={UserCheck}
           gradient="bg-gradient-to-br from-green-500 to-green-600"
@@ -728,9 +751,8 @@ export function Users({ users, payments }) {
                     </SelectTrigger>
                     <SelectContent className="dark:bg-gray-900 dark:border-gray-700">
                       <SelectItem value="all">All Roles</SelectItem>
-                      <SelectItem value="admin">Admin</SelectItem>
-                      <SelectItem value="staff">Staff</SelectItem>
-                      <SelectItem value="agent">Agent</SelectItem>
+                      <SelectItem value="accountant">Accountant</SelectItem>
+                      <SelectItem value="client">Client</SelectItem>
                     </SelectContent>
                   </Select>
 
@@ -773,6 +795,7 @@ export function Users({ users, payments }) {
                     />
                   </TableHead>
                   <TableHead className="dark:text-gray-300 whitespace-nowrap">User ID</TableHead>
+                  <TableHead className="dark:text-gray-300 whitespace-nowrap">Avatar</TableHead>
                   <TableHead className="dark:text-gray-300 whitespace-nowrap">Full Name</TableHead>
                   <TableHead className="dark:text-gray-300 whitespace-nowrap">Email</TableHead>
                   <TableHead className="dark:text-gray-300 whitespace-nowrap">Phone</TableHead>
@@ -812,13 +835,13 @@ export function Users({ users, payments }) {
                           {user.id}
                         </TableCell>
                         <TableCell>
-                          <div className="flex items-center gap-2">
-                            <Avatar className="w-8 h-8">
-                              <AvatarImage src={user.avatar} alt={user.fullName} />
-                              <AvatarFallback>{user.fullName.split(' ').map(n => n[0]).join('')}</AvatarFallback>
-                            </Avatar>
-                            <span className="dark:text-gray-300">{user.fullName}</span>
-                          </div>
+                          <Avatar className="w-8 h-8 mx-auto">
+                            <AvatarImage src={user.avatar} />
+                            <AvatarFallback>{user.fullName?.charAt(0) || 'U'}</AvatarFallback>
+                          </Avatar>
+                        </TableCell>
+                        <TableCell className="dark:text-gray-300 whitespace-nowrap">
+                          {user.fullName}
                         </TableCell>
                         <TableCell className="dark:text-gray-300 whitespace-nowrap">
                           {user.email}
@@ -1037,37 +1060,37 @@ export function Users({ users, payments }) {
 
 
 
-              {/* Payment History */}
+              {/* Voucher History */}
               <div className="border-t border-gray-200 dark:border-gray-700 pt-4">
                 <h4 className="font-semibold mb-3 dark:text-white flex items-center gap-2">
                   <DollarSign className="w-4 h-4" />
-                  Payment History
+                  Voucher History
                 </h4>
                 {(() => {
-                  const userPayments = getUserPayments(selectedUser.id);
-                  return userPayments.length > 0 ? (
+                  const userVouchers = getUserVouchers(selectedUser.id);
+                  return userVouchers.length > 0 ? (
                     <div className="space-y-2 max-h-40 overflow-y-auto">
-                      {userPayments.slice(0, 5).map((payment) => (
-                        <div key={payment.id} className="p-2 bg-gray-50 dark:bg-gray-900/50 rounded-lg">
+                      {userVouchers.slice(0, 5).map((v) => (
+                        <div key={v.id} className="p-2 bg-gray-50 dark:bg-gray-900/50 rounded-lg">
                           <div className="flex justify-between items-center">
-                            <span className="text-sm dark:text-gray-300">${payment.amount.toFixed(2)}</span>
-                            <Badge variant="outline" className={`text-xs ${statusColors[payment.status]}`}>
-                              {payment.status}
+                            <span className="text-sm dark:text-gray-300">${parseFloat(v.amount).toFixed(2)}</span>
+                            <Badge variant="outline" className={`text-xs ${statusColors[v.status]}`}>
+                              {v.status}
                             </Badge>
                           </div>
                           <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                            {formatDate(payment.date)} • {payment.service}
+                            {new Date(v.due_date).toLocaleDateString()} • {v.payment_type_name}
                           </p>
                         </div>
                       ))}
-                      {userPayments.length > 5 && (
+                      {userVouchers.length > 5 && (
                         <p className="text-xs text-gray-500 dark:text-gray-400 text-center">
-                          +{userPayments.length - 5} more payments
+                          +{userVouchers.length - 5} more vouchers
                         </p>
                       )}
                     </div>
                   ) : (
-                    <p className="text-sm text-gray-500 dark:text-gray-400">No payment history found</p>
+                    <p className="text-sm text-gray-500 dark:text-gray-400">No voucher history found</p>
                   );
                 })()}
               </div>
@@ -1092,9 +1115,9 @@ export function Users({ users, payments }) {
                       <p className="text-sm text-red-600 dark:text-red-400">Failed calls: {selectedUser.failedCalls}</p>
                     </div>
                   )}
-                  {selectedUser.failedPayments > 0 && (
+                  {selectedUser.overdueVouchers > 0 && (
                     <div className="p-2 bg-red-50 dark:bg-red-900/20 rounded-lg">
-                      <p className="text-sm text-red-600 dark:text-red-400">Failed payments: {selectedUser.failedPayments}</p>
+                      <p className="text-sm text-red-600 dark:text-red-400">Overdue vouchers: {selectedUser.overdueVouchers}</p>
                     </div>
                   )}
                 </div>
@@ -1210,10 +1233,8 @@ export function Users({ users, payments }) {
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent className="dark:bg-gray-900 dark:border-gray-700">
-                      <SelectItem value="admin">Admin</SelectItem>
-                      <SelectItem value="staff">Staff</SelectItem>
-                      <SelectItem value="agent">Agent</SelectItem>
-                      <SelectItem value="customer">Customer</SelectItem>
+                      <SelectItem value="accountant">Accountant</SelectItem>
+                      <SelectItem value="client">Client</SelectItem>
                     </SelectContent>
                   </Select>
                   <input type="hidden" data-edit-field="role" defaultValue={selectedUser.role} />
@@ -1432,7 +1453,7 @@ export function Users({ users, payments }) {
                   <SelectItem value="admin">Admin</SelectItem>
                   <SelectItem value="staff">Staff</SelectItem>
                   <SelectItem value="agent">Agent</SelectItem>
-                  <SelectItem value="customer">Customer</SelectItem>
+                  <SelectItem value="client">Client</SelectItem>
                 </SelectContent>
               </Select>
             </div>

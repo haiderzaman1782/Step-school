@@ -62,6 +62,7 @@ export const createPayment = async (req, res) => {
       return res.status(400).json({ error: 'Required fields: customerName, amount, paymentMethod' });
     }
 
+    console.log(`[PaymentsController] Creating payment for customer: ${customerName}, amount: ${amount}`);
     const payment = await Payment.create({
       id,
       transactionId,
@@ -79,6 +80,7 @@ export const createPayment = async (req, res) => {
       callReference,
       failureReason,
     });
+    console.log(`[PaymentsController] Payment created successfully with ID: ${payment.id}`);
 
     res.status(201).json(payment);
   } catch (error) {
@@ -91,11 +93,13 @@ export const updatePayment = async (req, res) => {
     const { id } = req.params;
     const { status, refundStatus, failureReason } = req.body;
 
+    console.log(`[PaymentsController] Updating payment ID: ${id} to status: ${status}`);
     const payment = await Payment.update(id, {
       status,
       refundStatus,
       failureReason,
     });
+    console.log(`[PaymentsController] Payment updated successfully: ${id}`);
 
     if (!payment) {
       return res.status(404).json({ error: 'Payment not found' });

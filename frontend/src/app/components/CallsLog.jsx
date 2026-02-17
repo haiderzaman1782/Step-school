@@ -37,7 +37,10 @@ const statusIcons = {
   active: PhoneCall,
 };
 
-export function CallsLog({ callLogs, liveCalls, onCallCreated }) {
+export function CallsLog() {
+  const [callLogs, setCallLogs] = useState([]);
+  const [liveCalls, setLiveCalls] = useState([]);
+  const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [callTypeFilter, setCallTypeFilter] = useState("all");
@@ -60,6 +63,24 @@ export function CallsLog({ callLogs, liveCalls, onCallCreated }) {
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
 
+  const fetchData = async () => {
+    try {
+      setLoading(true);
+      const data = await callsService.getAll();
+      setCallLogs(data);
+      // For demo/simplicity, filtering active calls as live calls
+      setLiveCalls(data.filter(c => c.status === "active"));
+    } catch (error) {
+      toast.error("Failed to load call logs");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchData();
+  }, []);
+
   // Calculate metrics
   const missedCalls = callLogs.filter(call => call.status === "missed").length;
   const bouncedCalls = callLogs.filter(call => call.status === "bounced").length;
@@ -69,14 +90,14 @@ export function CallsLog({ callLogs, liveCalls, onCallCreated }) {
 
   // Filter call logs
   const filteredCallLogs = callLogs.filter(call => {
-    const matchesSearch = 
+    const matchesSearch =
       call.callerName.toLowerCase().includes(searchQuery.toLowerCase()) ||
       call.phoneNumber.includes(searchQuery) ||
       call.purpose.toLowerCase().includes(searchQuery.toLowerCase());
-    
+
     const matchesStatus = statusFilter === "all" || call.status === statusFilter;
     const matchesCallType = callTypeFilter === "all" || call.callType === callTypeFilter;
-    
+
     return matchesSearch && matchesStatus && matchesCallType;
   });
 
@@ -107,11 +128,11 @@ export function CallsLog({ callLogs, liveCalls, onCallCreated }) {
     } else if (date.toDateString() === yesterday.toDateString()) {
       return `Yesterday ${date.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}`;
     } else {
-      return date.toLocaleString('en-US', { 
-        month: 'short', 
-        day: 'numeric', 
-        hour: '2-digit', 
-        minute: '2-digit' 
+      return date.toLocaleString('en-US', {
+        month: 'short',
+        day: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit'
       });
     }
   };
@@ -177,7 +198,7 @@ export function CallsLog({ callLogs, liveCalls, onCallCreated }) {
   const handleExport = async (format) => {
     setSelectedFormat(format);
     // Allow user to choose scope in modal, but default based on current state
-    const defaultScope = selectedRows.size > 0 ? "selected" : 
+    const defaultScope = selectedRows.size > 0 ? "selected" :
       (searchQuery || statusFilter !== "all" || callTypeFilter !== "all") ? "filtered" : "all";
     setExportScope(defaultScope);
     setShowExportModal(true);
@@ -196,7 +217,7 @@ export function CallsLog({ callLogs, liveCalls, onCallCreated }) {
       } else {
         dataToExport = callLogs; // All records
       }
-      
+
       // Filter by date range if provided
       let filteredData = dataToExport;
       if (config.startDate || config.endDate) {
@@ -210,7 +231,7 @@ export function CallsLog({ callLogs, liveCalls, onCallCreated }) {
 
       // Filter columns
       const selectedColumns = exportColumns.filter(col => config.columns.includes(col.key));
-      
+
       // Prepare data with formatted values
       const formattedData = filteredData.map(call => {
         const row = {};
@@ -288,9 +309,7 @@ export function CallsLog({ callLogs, liveCalls, onCallCreated }) {
         purpose: newCall.purpose,
         notes: newCall.notes,
       });
-      if (onCallCreated) {
-        onCallCreated(created);
-      }
+      await fetchData(); // Refresh data
       setIsCreateDialogOpen(false);
       setNewCall({ callerName: '', phoneNumber: '', callType: 'incoming', status: 'completed', duration: '00:00', timestamp: new Date().toISOString().slice(0, 16), purpose: '', notes: '' });
       toast.success("Call log created successfully");
@@ -354,7 +373,7 @@ export function CallsLog({ callLogs, liveCalls, onCallCreated }) {
                 />
               </div>
             </div>
-            
+
             {/* Search and Filter Bar */}
             <div className="flex flex-col space-y-5 sm:flex-row gap-3">
               <div className="relative flex-1">
@@ -367,7 +386,7 @@ export function CallsLog({ callLogs, liveCalls, onCallCreated }) {
                   className="pl-10 dark:bg-gray-900 dark:border-gray-700 dark:text-white"
                 />
               </div>
-              
+
               <div className="flex items-center gap-2">
                 <Select value={statusFilter} onValueChange={setStatusFilter}>
                   <SelectTrigger className="w-[150px] dark:bg-gray-900 dark:border-gray-700 dark:text-white">
@@ -429,7 +448,7 @@ export function CallsLog({ callLogs, liveCalls, onCallCreated }) {
                   paginatedCallLogs.map((call) => {
                     const CallTypeIcon = callTypeIcons[call.callType] || PhoneCall;
                     const StatusIcon = statusIcons[call.status] || PhoneCall;
-                    
+
                     return (
                       <TableRow key={call.id} className="dark:border-gray-700 table-row">
                         <TableCell>
@@ -440,12 +459,11 @@ export function CallsLog({ callLogs, liveCalls, onCallCreated }) {
                         </TableCell>
                         <TableCell>
                           <div className="flex items-center gap-2">
-                            <CallTypeIcon 
-                              className={`w-4 h-4 ${
-                                call.callType === "incoming" 
-                                  ? "text-blue-500" 
+                            <CallTypeIcon
+                              className={`w-4 h-4 ${call.callType === "incoming"
+                                  ? "text-blue-500"
                                   : "text-green-500"
-                              }`} 
+                                }`}
                             />
                             <span className="text-xs font-medium dark:text-gray-300 capitalize">
                               {call.callType}
@@ -459,8 +477,8 @@ export function CallsLog({ callLogs, liveCalls, onCallCreated }) {
                           {call.phoneNumber}
                         </TableCell>
                         <TableCell>
-                          <Badge 
-                            variant="outline" 
+                          <Badge
+                            variant="outline"
                             className={`${statusColors[call.status]} flex items-center gap-1 w-fit`}
                           >
                             <StatusIcon className="w-3 h-3" />
@@ -494,7 +512,7 @@ export function CallsLog({ callLogs, liveCalls, onCallCreated }) {
               </TableBody>
             </Table>
           </div>
-          
+
           {/* Pagination Controls */}
           {filteredCallLogs.length > 0 && (
             <div className="flex flex-col sm:flex-row items-center justify-between gap-4 mt-4 pt-4 border-t border-gray-200 dark:border-gray-700">
@@ -513,13 +531,13 @@ export function CallsLog({ callLogs, liveCalls, onCallCreated }) {
                 </Select>
                 <span className="text-sm text-gray-600 dark:text-gray-400">entries</span>
               </div>
-              
+
               <div className="flex items-center gap-2">
                 <span className="text-sm text-gray-600 dark:text-gray-400">
                   Showing {startIndex + 1} to {Math.min(endIndex, filteredCallLogs.length)} of {filteredCallLogs.length} entries
                 </span>
               </div>
-              
+
               <div className="flex items-center gap-2">
                 <Button
                   variant="outline"
@@ -530,7 +548,7 @@ export function CallsLog({ callLogs, liveCalls, onCallCreated }) {
                 >
                   <ChevronLeft className="w-4 h-4" />
                 </Button>
-                
+
                 <div className="flex items-center gap-1">
                   {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
                     let pageNum;
@@ -543,25 +561,24 @@ export function CallsLog({ callLogs, liveCalls, onCallCreated }) {
                     } else {
                       pageNum = currentPage - 2 + i;
                     }
-                    
+
                     return (
                       <Button
                         key={pageNum}
                         variant={currentPage === pageNum ? "default" : "outline"}
                         size="sm"
                         onClick={() => setCurrentPage(pageNum)}
-                        className={`w-8 h-8 p-0 ${
-                          currentPage === pageNum 
-                            ? "dark:bg-blue-600 dark:text-white" 
+                        className={`w-8 h-8 p-0 ${currentPage === pageNum
+                            ? "dark:bg-blue-600 dark:text-white"
                             : "dark:bg-gray-900 dark:border-gray-700 dark:text-white"
-                        }`}
+                          }`}
                       >
                         {pageNum}
                       </Button>
                     );
                   })}
                 </div>
-                
+
                 <Button
                   variant="outline"
                   size="sm"
@@ -670,8 +687,8 @@ export function CallsLog({ callLogs, liveCalls, onCallCreated }) {
               </div>
             </div>
             <DialogFooter>
-              <Button 
-                variant="outline" 
+              <Button
+                variant="outline"
                 onClick={() => {
                   setIsCreateDialogOpen(false);
                   setNewCall({ callerName: '', phoneNumber: '', callType: 'incoming', status: 'completed', duration: '00:00', timestamp: new Date().toISOString().slice(0, 16), purpose: '', notes: '' });

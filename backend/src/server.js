@@ -4,8 +4,7 @@ import dotenv from 'dotenv';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import pool from './config/database.js';
-import userRoutes from './routes/users.js';
-import paymentRoutes from './routes/payments.js';
+import apiRoutes from './routes/index.js';
 
 dotenv.config();
 
@@ -18,7 +17,7 @@ const PORT = process.env.PORT || 3001;
 // Middleware
 const allowedOrigins = process.env.CORS_ORIGIN
   ? process.env.CORS_ORIGIN.split(',').map(origin => origin.trim().replace(/\/$/, ''))
-  : ['https://step-school.vercel.app'];
+  : ['http://localhost:5173', 'http://localhost:5174', 'https://step-school.vercel.app'];
 
 app.use(cors({
   origin: (origin, callback) => {
@@ -48,8 +47,26 @@ app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 
 // Request logging middleware
 app.use((req, res, next) => {
+  const start = Date.now();
   const origin = req.get('Origin') || 'No Origin';
-  console.log(`${new Date().toISOString()} - ${req.method} ${req.url} - Origin: ${origin}`);
+  const method = req.method;
+  const url = req.url;
+
+  // Log request
+  console.log(`\n>>> [${new Date().toISOString()}] ${method} ${url}`);
+  console.log(`    Origin: ${origin}`);
+  if (['POST', 'PUT', 'PATCH'].includes(method) && req.body) {
+    const sanitizedBody = { ...req.body };
+    if (sanitizedBody.password) sanitizedBody.password = '********';
+    console.log(`    Body: ${JSON.stringify(sanitizedBody, null, 2)}`);
+  }
+
+  // Intercept response finish to log status and duration
+  res.on('finish', () => {
+    const duration = Date.now() - start;
+    console.log(`<<< [${new Date().toISOString()}] ${method} ${url} - Status: ${res.statusCode} (${duration}ms)`);
+  });
+
   next();
 });
 // Serve static files from uploads directory
@@ -57,8 +74,7 @@ app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
 
 
 // Routes
-app.use('/api/users', userRoutes);
-app.use('/api/payments', paymentRoutes);
+app.use('/api', apiRoutes);
 
 // Health check endpoint
 app.get('/health', async (req, res) => {
@@ -86,6 +102,14 @@ app.use((req, res) => {
 
 // Error handling middleware
 app.use((err, req, res, next) => {
+  // Ensure CORS headers are present even in errors
+  const origin = req.get('Origin');
+  if (origin) {
+    res.header('Access-Control-Allow-Origin', origin);
+    res.header('Access-Control-Allow-Credentials', 'true');
+  }
+
+  console.error(`Error: ${err.message}`);
   res.status(err.status || 500).json({
     error: err.message || 'Internal server error',
     ...(process.env.NODE_ENV === 'development' && { stack: err.stack }),
@@ -111,4 +135,3 @@ const startServer = async () => {
 };
 
 startServer();
-

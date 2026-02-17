@@ -1,177 +1,99 @@
 import React, { useState } from "react";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "./ui/card.jsx";
+import { authService } from "../services/authService";
 import { Button } from "./ui/button.jsx";
 import { Input } from "./ui/input.jsx";
-import { Label } from "./ui/label.jsx";
-import { Shield, Lock, User, Eye, EyeOff, AlertCircle } from "lucide-react";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "./ui/card.jsx";
 import { toast } from "sonner";
-
-// Default admin credentials (in production, this should be handled by backend)
-const DEFAULT_ADMIN_CREDENTIALS = {
-  username: "admin",
-  password: "admin123", // Change this in production
-};
+import { ShieldCheck, Lock, User, Eye, EyeOff } from "lucide-react";
 
 export function Login({ onLoginSuccess }) {
-  const [username, setUsername] = useState("");
+  const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setError("");
-
-    if (!username || !password) {
-      setError("Please enter both username and password");
-      return;
+    setLoading(true);
+    try {
+      const data = await authService.login(email, password);
+      toast.success("Login successful!");
+      onLoginSuccess(data.user);
+    } catch (error) {
+      toast.error(error.response?.data?.error || "Invalid credentials");
+    } finally {
+      setLoading(false);
     }
-
-    setIsLoading(true);
-
-    // Simulate API call delay
-    setTimeout(() => {
-      // Check credentials (in production, this should be an API call)
-      if (
-        username === DEFAULT_ADMIN_CREDENTIALS.username &&
-        password === DEFAULT_ADMIN_CREDENTIALS.password
-      ) {
-        // Store authentication in sessionStorage
-        const authData = {
-          username: username,
-          loggedInAt: new Date().toISOString(),
-          isAuthenticated: true,
-        };
-        sessionStorage.setItem("adminAuth", JSON.stringify(authData));
-
-        toast.success("Login successful!", {
-          description: "Welcome to AI Booking System",
-          duration: 3000,
-        });
-
-        if (onLoginSuccess) {
-          onLoginSuccess(authData);
-        }
-      } else {
-        setError("Invalid username or password");
-        toast.error("Login failed", {
-          description: "Please check your credentials",
-          duration: 3000,
-        });
-      }
-      setIsLoading(false);
-    }, 500);
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 via-white to-teal-50 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900 p-4">
-      <Card className="w-full max-w-md bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 shadow-xl p-5 rounded-xl">
-        <CardHeader className="space-y-1 text-center pb-6">
-          <div className="flex justify-center mb-4">
-            <div className="w-16 h-16 bg-gradient-to-br from-blue-500 to-teal-400 rounded-full flex items-center justify-center shadow-lg">
-              <Shield className="w-8 h-8 text-white" />
+    <div className="min-h-screen flex items-center justify-center bg-[#f8fbff] dark:bg-gray-950 p-4 font-sans">
+      <Card className="w-full max-w-md bg-white dark:bg-gray-900 shadow-[0_8px_30px_rgb(0,0,0,0.04)] border-none rounded-[20px] p-2">
+        <CardHeader className="text-center space-y-2 pt-8">
+          <div className="flex justify-center mb-2">
+            <div className="w-16 h-16 bg-gradient-to-br from-blue-500 to-cyan-400 rounded-full flex items-center justify-center shadow-lg shadow-blue-500/20">
+              <ShieldCheck className="w-9 h-9 text-white" />
             </div>
           </div>
-          <CardTitle className="text-2xl font-bold text-gray-900 dark:text-white">
-            System Login
-          </CardTitle>
-          <CardDescription className="text-gray-600 dark:text-gray-400">
+          <CardTitle className="text-3xl font-bold text-gray-800 dark:text-white pt-2">System Login</CardTitle>
+          <CardDescription className="text-gray-500 dark:text-gray-400 text-lg">
             Enter your credentials to access the dashboard
           </CardDescription>
         </CardHeader>
-        <CardContent>
-          <form onSubmit={handleSubmit} className="space-y-4">
-            {error && (
-              <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-3 flex items-center gap-2">
-                <AlertCircle className="w-5 h-5 text-red-600 dark:text-red-400 flex-shrink-0" />
-                <p className="text-sm text-red-600 dark:text-red-400">{error}</p>
-              </div>
-            )}
-
+        <CardContent className="px-8 pb-8">
+          <form onSubmit={handleSubmit} className="space-y-6">
             <div className="space-y-2">
-              <Label htmlFor="username" className="text-gray-700 dark:text-gray-300">
-                Username
-              </Label>
-              <div className="relative">
-                <User className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+              <label className="text-sm font-semibold text-gray-700 dark:text-gray-300 ml-1">Username</label>
+              <div className="relative group">
+                <User className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400 group-focus-within:text-blue-500 transition-colors" />
                 <Input
-                  id="username"
-                  type="text"
+                  type="email"
                   placeholder="Enter username"
-                  value={username}
-                  onChange={(e) => {
-                    setUsername(e.target.value);
-                    setError("");
-                  }}
-                  className="pl-10 dark:bg-gray-900 dark:border-gray-700 dark:text-white"
-                  disabled={isLoading}
-                  autoComplete="username"
+                  className="pl-12 h-12 bg-gray-50 dark:bg-gray-800 border-none rounded-xl focus-visible:ring-1 focus-visible:ring-blue-400 transition-all text-gray-800 dark:text-white"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  required
                 />
               </div>
             </div>
-
             <div className="space-y-2">
-              <Label htmlFor="password" className="text-gray-700 dark:text-gray-300">
-                Password
-              </Label>
-              <div className="relative">
-                <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+              <label className="text-sm font-semibold text-gray-700 dark:text-gray-300 ml-1">Password</label>
+              <div className="relative group">
+                <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400 group-focus-within:text-blue-500 transition-colors" />
                 <Input
-                  id="password"
                   type={showPassword ? "text" : "password"}
                   placeholder="Enter password"
+                  className="pl-12 pr-12 h-12 bg-gray-50 dark:bg-gray-800 border-none rounded-xl focus-visible:ring-1 focus-visible:ring-blue-400 transition-all text-gray-800 dark:text-white"
                   value={password}
-                  onChange={(e) => {
-                    setPassword(e.target.value);
-                    setError("");
-                  }}
-                  className="pl-10 pr-10 dark:bg-gray-900 dark:border-gray-700 dark:text-white"
-                  disabled={isLoading}
-                  autoComplete="current-password"
+                  onChange={(e) => setPassword(e.target.value)}
+                  required
                 />
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
-                  disabled={isLoading}
+                  className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 transition-colors"
                 >
-                  {showPassword ? (
-                    <EyeOff className="w-5 h-5" />
-                  ) : (
-                    <Eye className="w-5 h-5" />
-                  )}
+                  {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
                 </button>
               </div>
             </div>
-
             <Button
               type="submit"
-              className="w-full bg-gradient-to-r from-blue-500 to-teal-400 hover:from-blue-600 hover:to-teal-500 text-white"
-              disabled={isLoading}
+              className="w-full h-12 bg-gradient-to-r from-blue-500 to-cyan-400 hover:from-blue-600 hover:to-cyan-500 text-white font-bold text-lg rounded-xl shadow-lg shadow-blue-500/20 transition-all duration-300 flex items-center justify-center gap-2 mt-4"
+              disabled={loading}
             >
-              {isLoading ? (
-                <>
-                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                  Logging in...
-                </>
-              ) : (
-                <>
-                  <Lock className="w-4 h-4 mr-2" />
-                  Login
-                </>
-              )}
+              <Lock className="w-5 h-5" />
+              {loading ? "Authenticating..." : "Login"}
             </Button>
-
-            <div className="text-center pt-4 border-t border-gray-200 dark:border-gray-700">
-              <p className="text-xs text-gray-500 dark:text-gray-400">
-                Default credentials: admin / admin123
-              </p>
-            </div>
           </form>
+
+          <div className="mt-8 pt-6 border-t border-gray-100 dark:border-gray-800 text-center">
+            <p className="text-sm text-gray-400 dark:text-gray-500">
+              Default credentials: <span className="font-medium">admin / admin123</span>
+            </p>
+          </div>
         </CardContent>
       </Card>
     </div>
   );
 }
-

@@ -24,39 +24,39 @@ import {
   FileText,
   AlertCircle,
   ChevronLeft,
-  ChevronRight
+  ChevronRight,
+  Phone
 } from "lucide-react";
 import { MetricCard } from "./MetricCard.jsx";
 import { AreaChart, Area, BarChart, Bar, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from "recharts";
 import { toast } from "sonner";
 import { DialogFooter } from "./ui/dialog.jsx";
 import { Plus } from "lucide-react";
-import { paymentsService } from "../services/paymentsService";
+import { vouchersService } from "../services/vouchersService";
+import { clientsService } from "../services/clientsService";
+import { paymentTypesService } from "../services/paymentTypesService";
 
 const statusColors = {
   paid: "bg-green-100 text-green-800 border-green-200 dark:bg-green-900/30 dark:text-green-400 dark:border-green-800",
   pending: "bg-yellow-100 text-yellow-800 border-yellow-200 dark:bg-yellow-900/30 dark:text-yellow-400 dark:border-yellow-800",
-  failed: "bg-red-100 text-red-800 border-red-200 dark:bg-red-900/30 dark:text-red-400 dark:border-red-800",
+  overdue: "bg-red-100 text-red-800 border-red-200 dark:bg-red-900/30 dark:text-red-400 dark:border-red-800",
 };
 
 const statusIcons = {
   paid: CircleCheck,
   pending: Clock,
-  failed: CircleX,
+  overdue: CircleX,
 };
 
-const paymentMethodIcons = {
-  Stripe: CreditCard,
-  Card: CreditCard,
-  Cash: DollarSign,
-  Other: CreditCard,
-};
-
-export function Payments({ payments, onPaymentCreated, onStatusUpdate }) {
+export function Payments({ userRole }) {
+  const [vouchers, setVouchers] = useState([]);
+  const [clients, setClients] = useState([]);
+  const [paymentTypes, setPaymentTypes] = useState([]);
+  const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [dateFilter, setDateFilter] = useState("all");
-  const [selectedPayment, setSelectedPayment] = useState(null);
+  const [selectedVoucher, setSelectedVoucher] = useState(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [chartPeriod, setChartPeriod] = useState("weekly");
   const [selectedRows, setSelectedRows] = useState(new Set());
@@ -65,68 +65,68 @@ export function Payments({ payments, onPaymentCreated, onStatusUpdate }) {
   const [isExporting, setIsExporting] = useState(false);
   const [selectedFormat, setSelectedFormat] = useState("csv");
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
-  const [newPayment, setNewPayment] = useState({
-    customerName: '',
-    paymentMethod: 'Stripe',
+  const [newVoucher, setNewVoucher] = useState({
+    clientId: '',
+    paymentTypeId: '',
     amount: '',
+    dueDate: new Date().toISOString().split('T')[0],
+    description: '',
     status: 'pending',
-    date: new Date().toISOString().split('T')[0],
-    service: '',
-    invoiceNumber: '',
-    callReference: '',
+    attachment: null
   });
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
 
-  const handleStatusUpdate = async (paymentId, newStatus) => {
+  const fetchData = async () => {
     try {
-      const updatedPayment = await paymentsService.update(paymentId, { status: newStatus });
-      if (onStatusUpdate) {
-        onStatusUpdate(paymentId, newStatus);
-      }
-      toast.success("Payment status updated", {
-        description: `Status changed to ${newStatus}`,
-      });
+      setLoading(true);
+      const [vouchersData, clientsData, typesData] = await Promise.all([
+        vouchersService.getAll(),
+        clientsService.getAll(),
+        paymentTypesService.getAll()
+      ]);
+      setVouchers(vouchersData);
+      setClients(clientsData.users || []);
+      setPaymentTypes(typesData);
+    } catch (error) {
+      toast.error("Failed to load data");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchData();
+  }, []);
+
+  const handleStatusUpdate = async (id, newStatus) => {
+    try {
+      await vouchersService.updateStatus(id, { status: newStatus });
+      setVouchers(prev => prev.map(v => v.id === id ? { ...v, status: newStatus } : v));
+      toast.success("Status updated");
     } catch (error) {
       toast.error("Failed to update status");
     }
   };
 
-  // Calculate metrics from database payments
-  const totalRevenue = payments.reduce((sum, p) => sum + (parseFloat(p.amount) || 0), 0);
-  const paidPayments = payments.filter(p => p.status === "paid");
-  const paidAmount = paidPayments.reduce((sum, p) => sum + (parseFloat(p.amount) || 0), 0);
-  const pendingPayments = payments.filter(p => p.status === "pending");
-  const pendingAmount = pendingPayments.reduce((sum, p) => sum + (parseFloat(p.amount) || 0), 0);
-  const failedPayments = payments.filter(p => p.status === "failed");
-  const failedAmount = failedPayments.reduce((sum, p) => sum + (parseFloat(p.amount) || 0), 0);
+  // Metrics calculation
+  const totalAmount = vouchers.reduce((sum, v) => sum + (parseFloat(v.amount) || 0), 0);
+  const paidVouchers = vouchers.filter(v => v.status === "paid");
+  const paidAmount = paidVouchers.reduce((sum, v) => sum + (parseFloat(v.amount) || 0), 0);
+  const pendingVouchers = vouchers.filter(v => v.status === "pending");
+  const pendingAmount = pendingVouchers.reduce((sum, v) => sum + (parseFloat(v.amount) || 0), 0);
+  const overdueVouchers = vouchers.filter(v => v.status === "overdue");
+  const overdueAmount = overdueVouchers.reduce((sum, v) => sum + (parseFloat(v.amount) || 0), 0);
 
-  // Filter payments
-  const filteredPayments = payments.filter(payment => {
+  // Filter logic
+  const filteredPayments = vouchers.filter(v => {
     const matchesSearch =
-      payment.customerName?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      payment.id.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      payment.transactionId?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      payment.invoiceNumber?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      payment.callReference?.toLowerCase().includes(searchQuery.toLowerCase());
+      (v.voucher_number || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (v.client_name || '').toLowerCase().includes(searchQuery.toLowerCase());
 
-    const matchesStatus = statusFilter === "all" || payment.status === statusFilter;
+    const matchesStatus = statusFilter === 'all' || v.status === statusFilter;
 
-    let matchesDate = true;
-    if (dateFilter === "today") {
-      const today = new Date().toISOString().split('T')[0];
-      matchesDate = payment.date === today;
-    } else if (dateFilter === "week") {
-      const weekAgo = new Date();
-      weekAgo.setDate(weekAgo.getDate() - 7);
-      matchesDate = new Date(payment.date) >= weekAgo;
-    } else if (dateFilter === "month") {
-      const monthAgo = new Date();
-      monthAgo.setMonth(monthAgo.getMonth() - 1);
-      matchesDate = new Date(payment.date) >= monthAgo;
-    }
-
-    return matchesSearch && matchesStatus && matchesDate;
+    return matchesSearch && matchesStatus;
   });
 
   // Pagination calculations
@@ -214,24 +214,19 @@ export function Payments({ payments, onPaymentCreated, onStatusUpdate }) {
     } else if (exportScope === "filtered") {
       dataToExport = filteredPayments;
     } else {
-      dataToExport = payments;
+      dataToExport = vouchers;
     }
     return dataToExport;
   };
 
   // Export columns configuration
   const exportColumns = [
-    { key: "transactionId", label: "Transaction ID" },
-    { key: "invoiceNumber", label: "Invoice #" },
-    { key: "callReference", label: "Call Ref" },
-    // { key: "id", label: "Payment ID" },
-    { key: "customerName", label: "Customer Name" },
-    { key: "paymentMethod", label: "Payment Method" },
+    { key: "voucher_number", label: "Voucher #" },
+    { key: "client_name", label: "Client Name" },
+    { key: "payment_type_name", label: "Payment Type" },
     { key: "amount", label: "Amount" },
     { key: "status", label: "Status" },
-    { key: "date", label: "Date" },
-    // { key: "timestamp", label: "Date & Time" },
-    // { key: "refundStatus", label: "Refund Status" },
+    { key: "due_date", label: "Due Date" },
   ];
 
   // Handle export
@@ -244,31 +239,40 @@ export function Payments({ payments, onPaymentCreated, onStatusUpdate }) {
     setShowExportModal(true);
   };
 
-  // Handle create payment
-  const handleCreatePayment = async () => {
-    if (!newPayment.customerName || !newPayment.amount || !newPayment.paymentMethod) {
+  // Handle create voucher
+  const handleCreateVoucher = async () => {
+    if (!newVoucher.clientId || !newVoucher.amount || !newVoucher.paymentTypeId) {
       toast.error("Please fill in required fields");
       return;
     }
     try {
-      const created = await paymentsService.create({
-        customerName: newPayment.customerName,
-        paymentMethod: newPayment.paymentMethod,
-        amount: parseFloat(newPayment.amount),
-        status: newPayment.status,
-        date: newPayment.date,
-        service: newPayment.service,
-        invoiceNumber: newPayment.invoiceNumber,
-        callReference: newPayment.callReference,
-      });
-      if (onPaymentCreated) {
-        onPaymentCreated(created);
+      const formData = new FormData();
+      formData.append('clientId', newVoucher.clientId);
+      formData.append('paymentTypeId', newVoucher.paymentTypeId);
+      formData.append('amount', parseFloat(newVoucher.amount));
+      formData.append('dueDate', newVoucher.dueDate);
+      formData.append('description', newVoucher.description || '');
+      formData.append('status', newVoucher.status);
+      if (newVoucher.attachment) {
+        formData.append('attachment', newVoucher.attachment);
       }
+
+      await vouchersService.create(formData);
+
       setIsCreateDialogOpen(false);
-      setNewPayment({ customerName: '', paymentMethod: 'Stripe', amount: '', status: 'pending', date: new Date().toISOString().split('T')[0], service: '', invoiceNumber: '', callReference: '' });
-      toast.success("Payment created successfully");
+      setNewVoucher({
+        clientId: '',
+        paymentTypeId: '',
+        amount: '',
+        dueDate: new Date().toISOString().split('T')[0],
+        description: '',
+        status: 'pending',
+        attachment: null
+      });
+      toast.success("Voucher created successfully");
+      fetchData();
     } catch (error) {
-      toast.error("Failed to create payment");
+      toast.error("Failed to create voucher");
     }
   };
 
@@ -283,7 +287,7 @@ export function Payments({ payments, onPaymentCreated, onStatusUpdate }) {
       } else if (scopeToUse === "filtered") {
         dataToExport = filteredPayments;
       } else {
-        dataToExport = payments; // All records
+        dataToExport = vouchers; // All records
       }
 
       // Filter by date range if provided
@@ -306,22 +310,17 @@ export function Payments({ payments, onPaymentCreated, onStatusUpdate }) {
         selectedColumns.forEach(col => {
           switch (col.key) {
             case "transactionId":
-              row[col.key] = payment.transactionId || payment.id;
+              row[col.key] = payment.voucher_number || payment.id;
               break;
             case "date":
-              row[col.key] = formatDateForExport(payment.date);
-              break;
-            case "timestamp":
-              row[col.key] = payment.timestamp ? formatDateTimeForExport(payment.timestamp) : formatDateForExport(payment.date);
+            case "due_date":
+              row[col.key] = formatDateForExport(payment.due_date);
               break;
             case "amount":
-              row[col.key] = `$${payment.amount.toFixed(2)}`;
+              row[col.key] = `$${parseFloat(payment.amount).toFixed(2)}`;
               break;
             case "status":
               row[col.key] = payment.status.charAt(0).toUpperCase() + payment.status.slice(1);
-              break;
-            case "refundStatus":
-              row[col.key] = payment.refundStatus || "N/A";
               break;
             default:
               row[col.key] = payment[col.key] || "N/A";
@@ -349,14 +348,14 @@ export function Payments({ payments, onPaymentCreated, onStatusUpdate }) {
           formattedData,
           selectedColumns,
           {
-            filename: "payments",
-            title: "Payments Report",
+            filename: "vouchers",
+            title: "Vouchers Report",
             orientation: config.orientation,
             includeSummary: config.includeSummary,
             summaryData,
           }
         );
-        toast.success("Payments exported successfully!", {
+        toast.success("Vouchers exported successfully!", {
           description: `${formattedData.length} records exported as PDF`,
         });
       }
@@ -371,58 +370,46 @@ export function Payments({ payments, onPaymentCreated, onStatusUpdate }) {
     }
   };
 
-  // Chart data - calculated from database payments
+  // Chart data - calculated from database vouchers
   const revenueData = chartPeriod === "weekly"
-    ? calculateWeeklyRevenue(payments)
+    ? calculateWeeklyRevenue(vouchers)
     : chartPeriod === "monthly"
-      ? calculateMonthlyRevenue(payments)
-      : calculateYearlyRevenue(payments);
+      ? calculateMonthlyRevenue(vouchers)
+      : calculateYearlyRevenue(vouchers);
 
   const paymentStatusData = [
-    { name: "Paid", value: paidPayments.length, color: "#10b981" },
-    { name: "Pending", value: pendingPayments.length, color: "#f59e0b" },
-    { name: "Failed", value: failedPayments.length, color: "#ef4444" }
+    { name: "Paid", value: paidVouchers.length, color: "#10b981" },
+    { name: "Pending", value: pendingVouchers.length, color: "#f59e0b" },
+    { name: "Overdue", value: overdueVouchers.length, color: "#ef4444" }
   ];
 
-  // Group payment methods: Cards (Credit Card, Debit Card) and Other (transfers like Mobile Payment, Bank Transfer, PayPal, etc.)
-  const cardMethods = ["Credit Card", "Debit Card"];
-  const transferMethods = ["Mobile Payment", "Bank Transfer", "PayPal"];
-
-  const paymentMethodData = [
-    {
-      name: "Cards",
-      value: payments.filter(p => cardMethods.includes(p.paymentMethod)).length,
-      color: "#3b82f6"
-    },
-    {
-      name: "Cash",
-      value: payments.filter(p => p.paymentMethod === "Cash").length,
-      color: "#8b5cf6"
-    },
-    {
-      name: "Other",
-      value: payments.filter(p =>
-        transferMethods.includes(p.paymentMethod) ||
-        (!cardMethods.includes(p.paymentMethod) && p.paymentMethod !== "Cash" && p.paymentMethod !== "Stripe" && p.paymentMethod !== "Card")
-      ).length,
-      color: "#f59e0b"
-    }
-  ];
+  // Group payment methods based on payment type names from vouchers
+  const paymentMethodData = Array.from(
+    vouchers.reduce((acc, v) => {
+      const type = v.paymentTypeName || "Other";
+      acc.set(type, (acc.get(type) || 0) + 1);
+      return acc;
+    }, new Map())
+  ).map(([name, value]) => ({
+    name,
+    value,
+    color: "#3b82f6" // Default color, could be mapped
+  }));
 
   return (
     <div className="space-y-4 sm:space-y-6">
-      {/* Failed Payments Alert Banner */}
-      {failedPayments.length > 0 && (
+      {/* Overdue Vouchers Alert Banner */}
+      {overdueVouchers.length > 0 && (
         <Card className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 p-2 sm:p-4 rounded-xl shadow-md dark:shadow-none">
           <CardContent className="p-4">
             <div className="flex items-center gap-3">
               <AlertCircle className="w-5 h-5 text-red-600 dark:text-red-400 flex-shrink-0" />
               <div className="flex-1">
                 <p className="font-semibold text-red-900 dark:text-red-300">
-                  {failedPayments.length} Failed Payment{failedPayments.length > 1 ? 's' : ''} Require Attention
+                  {overdueVouchers.length} Overdue Voucher{overdueVouchers.length > 1 ? 's' : ''} Require Attention
                 </p>
                 <p className="text-sm text-red-700 dark:text-red-400">
-                  Total failed amount: ${failedAmount.toFixed(2)}
+                  Total overdue amount: ${overdueAmount.toFixed(2)}
                 </p>
               </div>
             </div>
@@ -433,33 +420,33 @@ export function Payments({ payments, onPaymentCreated, onStatusUpdate }) {
       {/* Summary Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
         <MetricCard
-          title="Total Revenue"
-          value={`$${totalRevenue.toFixed(2)}`}
-          change={`${payments.length} transactions`}
-          changeType="positive"
+          title="Total Amount"
+          value={`$${totalAmount.toFixed(2)}`}
+          change={`${vouchers.length} vouchers`}
+          changeType="neutral"
           icon={DollarSign}
           gradient="bg-gradient-to-br from-blue-500 to-blue-600"
         />
         <MetricCard
-          title="Paid Payments"
+          title="Paid Vouchers"
           value={`$${paidAmount.toFixed(2)}`}
-          change={`${paidPayments.length} completed`}
+          change={`${paidVouchers.length} completed`}
           changeType="positive"
           icon={CircleCheck}
           gradient="bg-gradient-to-br from-green-500 to-green-600"
         />
         <MetricCard
-          title="Pending Payments"
+          title="Pending Vouchers"
           value={`$${pendingAmount.toFixed(2)}`}
-          change={`${pendingPayments.length} awaiting`}
+          change={`${pendingVouchers.length} awaiting`}
           changeType="neutral"
           icon={Clock}
           gradient="bg-gradient-to-br from-yellow-500 to-yellow-600"
         />
         <MetricCard
-          title="Failed Payments"
-          value={`$${failedAmount.toFixed(2)}`}
-          change={`${failedPayments.length} failed`}
+          title="Overdue Vouchers"
+          value={`$${overdueAmount.toFixed(2)}`}
+          change={`${overdueVouchers.length} overdue`}
           changeType="negative"
           icon={CircleX}
           gradient="bg-gradient-to-br from-red-500 to-red-600"
@@ -552,9 +539,9 @@ export function Payments({ payments, onPaymentCreated, onStatusUpdate }) {
                   <div className="text-center">
                     <p className="text-lg font-medium mb-2">No revenue data available</p>
                     <p className="text-sm">
-                      {payments.length === 0
-                        ? "No payments found in database"
-                        : "No payments found in the selected period"}
+                      {vouchers.length === 0
+                        ? "No vouchers found in database"
+                        : "No vouchers found in the selected period"}
                     </p>
                   </div>
                 </div>
@@ -572,7 +559,11 @@ export function Payments({ payments, onPaymentCreated, onStatusUpdate }) {
             <ResponsiveContainer width="100%" height={300}>
               <PieChart>
                 <Pie
-                  data={paymentStatusData}
+                  data={[
+                    { name: "Paid", value: paidVouchers.length, color: "#10b981" },
+                    { name: "Pending", value: pendingVouchers.length, color: "#f59e0b" },
+                    { name: "Overdue", value: overdueVouchers.length, color: "#ef4444" }
+                  ]}
                   cx="50%"
                   cy="50%"
                   labelLine={false}
@@ -581,7 +572,11 @@ export function Payments({ payments, onPaymentCreated, onStatusUpdate }) {
                   dataKey="value"
                   label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
                 >
-                  {paymentStatusData.map((entry, index) => (
+                  {[
+                    { color: "#10b981" },
+                    { color: "#f59e0b" },
+                    { color: "#ef4444" }
+                  ].map((entry, index) => (
                     <Cell key={`cell-${index}`} fill={entry.color} />
                   ))}
                 </Pie>
@@ -622,7 +617,7 @@ export function Payments({ payments, onPaymentCreated, onStatusUpdate }) {
         <CardHeader>
           <div className="flex flex-col gap-4">
             <div className="flex items-center justify-between">
-              <CardTitle className="dark:text-white">Payment Transactions</CardTitle>
+              <CardTitle className="dark:text-white">Voucher Transactions</CardTitle>
               <ExportDropdown
                 onExport={handleExport}
                 disabled={filteredPayments.length === 0}
@@ -639,7 +634,7 @@ export function Payments({ payments, onPaymentCreated, onStatusUpdate }) {
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
                 <Input
                   type="search"
-                  placeholder="Search by customer, transaction ID..."
+                  placeholder="Search by client, voucher number..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   className="pl-10 dark:bg-gray-900 dark:border-gray-700 dark:text-white"
@@ -655,7 +650,7 @@ export function Payments({ payments, onPaymentCreated, onStatusUpdate }) {
                     <SelectItem value="all">All Statuses</SelectItem>
                     <SelectItem value="paid">Paid</SelectItem>
                     <SelectItem value="pending">Pending</SelectItem>
-                    <SelectItem value="failed">Failed</SelectItem>
+                    <SelectItem value="overdue">Overdue</SelectItem>
                   </SelectContent>
                 </Select>
 
@@ -701,13 +696,12 @@ export function Payments({ payments, onPaymentCreated, onStatusUpdate }) {
                       }}
                     />
                   </TableHead>
-                  <TableHead className="dark:text-gray-300 whitespace-nowrap">Transaction ID</TableHead>
-                  <TableHead className="dark:text-gray-300 whitespace-nowrap">Customer</TableHead>
-                  <TableHead className="dark:text-gray-300 whitespace-nowrap">Service</TableHead>
-                  <TableHead className="dark:text-gray-300 whitespace-nowrap">Payment Method</TableHead>
+                  <TableHead className="dark:text-gray-300 whitespace-nowrap">Voucher #</TableHead>
+                  <TableHead className="dark:text-gray-300 whitespace-nowrap">Client</TableHead>
+                  <TableHead className="dark:text-gray-300 whitespace-nowrap">Payment Type</TableHead>
                   <TableHead className="dark:text-gray-300 whitespace-nowrap">Amount</TableHead>
                   <TableHead className="dark:text-gray-300 whitespace-nowrap">Status</TableHead>
-                  <TableHead className="dark:text-gray-300 whitespace-nowrap">Date & Time</TableHead>
+                  <TableHead className="dark:text-gray-300 whitespace-nowrap">Due Date</TableHead>
                   <TableHead className="dark:text-gray-300 whitespace-nowrap">Actions</TableHead>
                 </TableRow>
               </TableHeader>
@@ -715,89 +709,77 @@ export function Payments({ payments, onPaymentCreated, onStatusUpdate }) {
                 {filteredPayments.length === 0 ? (
                   <TableRow className="dark:border-gray-700">
                     <TableCell colSpan={9} className="text-center py-8 text-gray-500 dark:text-gray-400">
-                      No payments found
+                      No vouchers found
                     </TableCell>
                   </TableRow>
                 ) : (
-                  paginatedPayments.map((payment) => {
-                    const StatusIcon = statusIcons[payment.status];
-                    const MethodIcon = paymentMethodIcons[payment.paymentMethod] || CreditCard;
-
-                    return (
-                      <TableRow
-                        key={payment.id}
-                        className={`dark:border-gray-700 ${payment.status === "failed"
-                          ? "bg-red-50/50 dark:bg-red-900/10"
-                          : ""
-                          }`}
-                      >
-                        <TableCell>
-                          <Checkbox
-                            checked={selectedRows.has(payment.id)}
-                            onCheckedChange={() => handleSelectRow(payment.id)}
-                          />
-                        </TableCell>
-                        <TableCell className="font-medium dark:text-gray-300 whitespace-nowrap">
-                          {payment.transactionId || payment.id}
-                        </TableCell>
-                        <TableCell className="dark:text-gray-300 whitespace-nowrap">
-                          {payment.customerName || "N/A"}
-                        </TableCell>
-                        <TableCell className="dark:text-gray-300 whitespace-nowrap">
-                          {payment.service || "N/A"}
-                        </TableCell>
-                        <TableCell>
-                          <div className="flex items-center gap-2">
-                            <MethodIcon className="w-4 h-4 text-gray-500 dark:text-gray-400" />
-                            <span className="dark:text-gray-300">{payment.paymentMethod || "N/A"}</span>
-                          </div>
-                        </TableCell>
-                        <TableCell className="font-semibold dark:text-gray-300 whitespace-nowrap">
-                          ${payment.amount.toFixed(2)}
-                        </TableCell>
-                        <TableCell>
-                          <Select
-                            value={payment.status}
-                            onValueChange={(newStatus) => handleStatusUpdate(payment.id, newStatus)}
+                  paginatedPayments.map((v) => (
+                    <TableRow
+                      key={v.id}
+                      className={`dark:border-gray-700 ${v.status === "overdue"
+                        ? "bg-red-50/50 dark:bg-red-900/10"
+                        : ""
+                        }`}
+                    >
+                      <TableCell>
+                        <Checkbox
+                          checked={selectedRows.has(v.id)}
+                          onCheckedChange={() => handleSelectRow(v.id)}
+                        />
+                      </TableCell>
+                      <TableCell className="font-medium dark:text-gray-300 whitespace-nowrap">
+                        {v.voucherNumber}
+                      </TableCell>
+                      <TableCell className="dark:text-gray-300 whitespace-nowrap">
+                        {v.clientName || "N/A"}
+                      </TableCell>
+                      <TableCell className="dark:text-gray-300 whitespace-nowrap">
+                        {v.paymentTypeName || "N/A"}
+                      </TableCell>
+                      <TableCell className="font-semibold dark:text-gray-300 whitespace-nowrap">
+                        ${parseFloat(v.amount).toFixed(2)}
+                      </TableCell>
+                      <TableCell>
+                        <Select
+                          value={v.status}
+                          onValueChange={(newStatus) => handleStatusUpdate(v.id, newStatus)}
+                          disabled={userRole !== 'accountant'}
+                        >
+                          <SelectTrigger className={`w-[140px] h-8 text-xs border ${statusColors[v.status]}`}>
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent className="dark:bg-gray-900 dark:border-gray-700">
+                            <SelectItem value="paid">Paid</SelectItem>
+                            <SelectItem value="pending">Pending</SelectItem>
+                            <SelectItem value="overdue">Overdue</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </TableCell>
+                      <TableCell className="dark:text-gray-300 whitespace-nowrap text-sm">
+                        {formatDate(v.due_date)}
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex items-center gap-2">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => { setSelectedVoucher(v); setIsDialogOpen(true); }}
+                            className="dark:text-gray-300 dark:hover:bg-gray-700"
                           >
-                            <SelectTrigger className={`w-[140px] h-8 text-xs border ${statusColors[payment.status]}`}>
-                              <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent className="dark:bg-gray-900 dark:border-gray-700">
-                              <SelectItem value="paid">Paid</SelectItem>
-                              <SelectItem value="pending">Pending</SelectItem>
-                              <SelectItem value="failed">Failed</SelectItem>
-                            </SelectContent>
-                          </Select>
-                        </TableCell>
-                        <TableCell className="dark:text-gray-300 whitespace-nowrap text-sm">
-                          {payment.timestamp ? formatTimestamp(payment.timestamp) : formatDate(payment.date)}
-                        </TableCell>
-                        <TableCell>
-                          <div className="flex items-center gap-2">
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => handleViewPayment(payment)}
-                              className="dark:text-gray-300 dark:hover:bg-gray-700"
-                            >
-                              <Eye className="w-4 h-4" />
-                            </Button>
-                            {payment.status === "paid" && (
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={() => handleRefund(payment)}
-                                className="dark:text-gray-300 dark:hover:bg-gray-700"
-                              >
-                                <RotateCcw className="w-4 h-4" />
-                              </Button>
-                            )}
-                          </div>
-                        </TableCell>
-                      </TableRow>
-                    );
-                  })
+                            <Eye className="w-4 h-4" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => vouchersService.downloadPDF(v.id, v.voucherNumber)}
+                            className="dark:text-gray-300 dark:hover:bg-gray-700"
+                          >
+                            <FileText className="w-4 h-4" />
+                          </Button>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ))
                 )}
               </TableBody>
             </Table>
@@ -884,178 +866,101 @@ export function Payments({ payments, onPaymentCreated, onStatusUpdate }) {
         </CardContent>
       </Card>
 
-      {/* Payment Details Modal */}
+      {/* Voucher Details Modal */}
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
         <DialogContent className="max-w-2xl dark:bg-gray-800 dark:border-gray-700">
           <DialogHeader>
-            <DialogTitle className="dark:text-white">Payment Details</DialogTitle>
+            <DialogTitle className="dark:text-white">Voucher Details</DialogTitle>
             <DialogDescription className="dark:text-gray-400">
-              Complete information for transaction {selectedPayment?.transactionId || selectedPayment?.id}
+              Complete information for Voucher {selectedVoucher?.voucherNumber}
             </DialogDescription>
           </DialogHeader>
 
-          {selectedPayment && (
+          {selectedVoucher && (
             <div className="space-y-6 mt-4">
-              {/* Payment Information */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <p className="text-sm font-medium text-gray-600 dark:text-gray-400">Transaction ID</p>
-                  <p className="text-sm font-semibold dark:text-gray-300">{selectedPayment.transactionId || selectedPayment.id}</p>
-                </div>
-                <div className="space-y-2">
-                  <p className="text-sm font-medium text-gray-600 dark:text-gray-400">Invoice Number</p>
-                  <p className="text-sm font-semibold dark:text-gray-300">{selectedPayment.invoiceNumber || "N/A"}</p>
-                </div>
-                <div className="space-y-2">
-                  <p className="text-sm font-medium text-gray-600 dark:text-gray-400">Amount</p>
-                  <p className="text-lg font-bold text-gray-900 dark:text-white">${selectedPayment.amount.toFixed(2)}</p>
+                  <p className="text-sm font-medium text-gray-600 dark:text-gray-400">Voucher Number</p>
+                  <p className="text-sm font-semibold dark:text-gray-300">{selectedVoucher.voucherNumber}</p>
                 </div>
                 <div className="space-y-2">
                   <p className="text-sm font-medium text-gray-600 dark:text-gray-400">Status</p>
                   <Badge
                     variant="outline"
-                    className={`${statusColors[selectedPayment.status]} flex items-center gap-1 w-fit`}
+                    className={`${statusColors[selectedVoucher.status]} flex items-center gap-1 w-fit`}
                   >
-                    {React.createElement(statusIcons[selectedPayment.status], { className: "w-3 h-3" })}
-                    <span className="capitalize">{selectedPayment.status}</span>
+                    <span className="capitalize">{selectedVoucher.status}</span>
                   </Badge>
                 </div>
                 <div className="space-y-2">
-                  <p className="text-sm font-medium text-gray-600 dark:text-gray-400">Payment Method</p>
-                  <div className="flex items-center gap-2">
-                    {React.createElement(paymentMethodIcons[selectedPayment.paymentMethod] || CreditCard, { className: "w-4 h-4 text-gray-500 dark:text-gray-400" })}
-                    <p className="text-sm dark:text-gray-300">{selectedPayment.paymentMethod || "N/A"}</p>
-                  </div>
+                  <p className="text-sm font-medium text-gray-600 dark:text-gray-400">Amount</p>
+                  <p className="text-lg font-bold text-gray-900 dark:text-white">${parseFloat(selectedVoucher.amount).toFixed(2)}</p>
                 </div>
                 <div className="space-y-2">
-                  <p className="text-sm font-medium text-gray-600 dark:text-gray-400">Date & Time</p>
-                  <p className="text-sm dark:text-gray-300">
-                    {selectedPayment.timestamp ? formatTimestamp(selectedPayment.timestamp) : formatDate(selectedPayment.date)}
+                  <p className="text-sm font-medium text-gray-600 dark:text-gray-400">Due Date</p>
+                  <p className="text-sm dark:text-gray-300">{formatDate(selectedVoucher.dueDate)}</p>
+                </div>
+                <div className="space-y-2">
+                  <p className="text-sm font-medium text-gray-600 dark:text-gray-400">Client</p>
+                  <p className="text-sm dark:text-gray-300">{selectedVoucher.clientName}</p>
+                </div>
+                <div className="space-y-2">
+                  <p className="text-sm font-medium text-gray-600 dark:text-gray-400">Payment Type</p>
+                  <p className="text-sm dark:text-gray-300">{selectedVoucher.paymentTypeName}</p>
+                </div>
+              </div>
+
+              {selectedVoucher.description && (
+                <div className="border-t border-gray-200 dark:border-gray-700 pt-4">
+                  <h3 className="font-semibold mb-2 dark:text-white">Description</h3>
+                  <p className="text-sm text-gray-600 dark:text-gray-400 bg-gray-50 dark:bg-gray-900/50 p-3 rounded-lg">
+                    {selectedVoucher.description}
                   </p>
                 </div>
-              </div>
-
-              {/* Customer Information */}
-              <div className="border-t border-gray-200 dark:border-gray-700 pt-4">
-                <h3 className="font-semibold mb-3 dark:text-white">Customer Information</h3>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <p className="text-sm font-medium text-gray-600 dark:text-gray-400">Customer Name</p>
-                    <p className="text-sm dark:text-gray-300">{selectedPayment.customerName || "N/A"}</p>
-                  </div>
-                  <div className="space-y-2">
-                    <p className="text-sm font-medium text-gray-600 dark:text-gray-400">Service</p>
-                    <p className="text-sm dark:text-gray-300">{selectedPayment.service || "N/A"}</p>
-                  </div>
-                </div>
-              </div>
-
-              {/* Appointment Details */}
-              {selectedPayment.appointmentId && (
-                <div className="border-t border-gray-200 dark:border-gray-700 pt-4">
-                  <h3 className="font-semibold mb-3 dark:text-white flex items-center gap-2">
-                    <Calendar className="w-4 h-4" />
-                    Appointment Details
-                  </h3>
-                  {(() => {
-                    const appointment = getAppointmentDetails(selectedPayment.appointmentId);
-                    return appointment ? (
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                        <div className="space-y-2">
-                          <p className="text-sm font-medium text-gray-600 dark:text-gray-400">Appointment ID</p>
-                          <p className="text-sm dark:text-gray-300">{appointment.id}</p>
-                        </div>
-                        <div className="space-y-2">
-                          <p className="text-sm font-medium text-gray-600 dark:text-gray-400">Date</p>
-                          <p className="text-sm dark:text-gray-300">{formatDate(appointment.date)}</p>
-                        </div>
-                        <div className="space-y-2">
-                          <p className="text-sm font-medium text-gray-600 dark:text-gray-400">Time</p>
-                          <p className="text-sm dark:text-gray-300">{appointment.time}</p>
-                        </div>
-                        <div className="space-y-2">
-                          <p className="text-sm font-medium text-gray-600 dark:text-gray-400">Status</p>
-                          <Badge variant="outline" className="w-fit capitalize dark:text-gray-300">
-                            {appointment.status}
-                          </Badge>
-                        </div>
-                      </div>
-                    ) : (
-                      <p className="text-sm text-gray-500 dark:text-gray-400">Appointment details not available</p>
-                    );
-                  })()}
-                </div>
               )}
 
-              {/* Call Reference */}
-              {selectedPayment.callReference && (
+              {selectedVoucher.attachment_url && (
                 <div className="border-t border-gray-200 dark:border-gray-700 pt-4">
-                  <h3 className="font-semibold mb-3 dark:text-white flex items-center gap-2">
-                    <Phone className="w-4 h-4" />
-                    Call Reference
-                  </h3>
-                  <p className="text-sm dark:text-gray-300">{selectedPayment.callReference}</p>
+                  <h3 className="font-semibold mb-2 dark:text-white">Attachment</h3>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => window.open(selectedVoucher.attachment_url, '_blank')}
+                    className="flex items-center gap-2"
+                  >
+                    <FileText className="w-4 h-4" />
+                    View Attachment
+                  </Button>
                 </div>
               )}
-
-              {/* Failure Reason */}
-              {selectedPayment.status === "failed" && selectedPayment.failureReason && (
-                <div className="border-t border-gray-200 dark:border-gray-700 pt-4">
-                  <h3 className="font-semibold mb-3 dark:text-white flex items-center gap-2 text-red-600 ">
-                    <AlertCircle className="w-4 h-4" />
-                    Failure Reason
-                  </h3>
-                  <p className="text-sm text-red-600 dark:text-red-400">{selectedPayment.failureReason}</p>
-                </div>
-              )}
-
-              {/* Invoice Summary */}
-              <div className="border-t border-gray-200 dark:border-gray-700 pt-4">
-                <h3 className="font-semibold mb-3 dark:text-white flex items-center gap-2">
-                  <FileText className="w-4 h-4" />
-                  Invoice Summary
-                </h3>
-                <div className="bg-gray-50 dark:bg-gray-900/50 rounded-lg p-4">
-                  <div className="flex justify-between items-center mb-2">
-                    <span className="text-sm text-gray-600 dark:text-gray-400">Subtotal</span>
-                    <span className="text-sm font-semibold dark:text-gray-300">${selectedPayment.amount.toFixed(2)}</span>
-                  </div>
-                  <div className="flex justify-between items-center mb-2">
-                    <span className="text-sm text-gray-600 dark:text-gray-400">Tax</span>
-                    <span className="text-sm font-semibold dark:text-gray-300">$0.00</span>
-                  </div>
-                  <div className="border-t border-gray-200 dark:border-gray-700 pt-2 mt-2">
-                    <div className="flex justify-between items-center">
-                      <span className="text-base font-semibold dark:text-white">Total</span>
-                      <span className="text-lg font-bold dark:text-white">${selectedPayment.amount.toFixed(2)}</span>
-                    </div>
-                  </div>
-                </div>
-              </div>
             </div>
           )}
         </DialogContent>
       </Dialog>
 
-      {/* Create Payment Dialog */}
+      {/* Create Voucher Dialog */}
       <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
         <DialogContent className="dark:bg-gray-800 dark:border-gray-700 max-w-2xl">
           <DialogHeader>
-            <DialogTitle className="dark:text-white">Add New Payment</DialogTitle>
+            <DialogTitle className="dark:text-white">Add New Voucher</DialogTitle>
             <DialogDescription className="dark:text-gray-400">
-              Record a new payment transaction
+              Create a new payment voucher for a client
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-4">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <label className="text-sm font-medium dark:text-gray-300">Customer Name *</label>
-                <Input
-                  placeholder="Enter customer name"
-                  value={newPayment.customerName}
-                  onChange={(e) => setNewPayment({ ...newPayment, customerName: e.target.value })}
-                  className="mt-1 dark:bg-gray-900 dark:border-gray-700 dark:text-white"
-                />
+                <label className="text-sm font-medium dark:text-gray-300">Client *</label>
+                <Select value={newVoucher.clientId} onValueChange={(value) => setNewVoucher({ ...newVoucher, clientId: value })}>
+                  <SelectTrigger className="mt-1 dark:bg-gray-900 dark:border-gray-700 dark:text-white">
+                    <SelectValue placeholder="Select client" />
+                  </SelectTrigger>
+                  <SelectContent className="dark:bg-gray-900 dark:border-gray-700">
+                    {clients.map(client => (
+                      <SelectItem key={client.id} value={client.id.toString()}>{client.fullName}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
 
               <div>
@@ -1064,56 +969,62 @@ export function Payments({ payments, onPaymentCreated, onStatusUpdate }) {
                   type="number"
                   step="0.01"
                   placeholder="0.00"
-                  value={newPayment.amount}
-                  onChange={(e) => setNewPayment({ ...newPayment, amount: e.target.value })}
+                  value={newVoucher.amount}
+                  onChange={(e) => setNewVoucher({ ...newVoucher, amount: e.target.value })}
                   className="mt-1 dark:bg-gray-900 dark:border-gray-700 dark:text-white"
                 />
               </div>
               <div>
-                <label className="text-sm font-medium dark:text-gray-300">Payment Method *</label>
-                <Select value={newPayment.paymentMethod} onValueChange={(value) => setNewPayment({ ...newPayment, paymentMethod: value })}>
+                <label className="text-sm font-medium dark:text-gray-300">Payment Type *</label>
+                <Select value={newVoucher.paymentTypeId} onValueChange={(value) => setNewVoucher({ ...newVoucher, paymentTypeId: value })}>
                   <SelectTrigger className="mt-1 dark:bg-gray-900 dark:border-gray-700 dark:text-white">
-                    <SelectValue placeholder="Select method" />
+                    <SelectValue placeholder="Select type" />
                   </SelectTrigger>
                   <SelectContent className="dark:bg-gray-900 dark:border-gray-700">
-                    <SelectItem value="Stripe">Stripe</SelectItem>
-                    <SelectItem value="PayPal">PayPal</SelectItem>
-                    <SelectItem value="Card">Card</SelectItem>
-                    <SelectItem value="Cash">Cash</SelectItem>
-                    <SelectItem value="Other">Other</SelectItem>
+                    {paymentTypes.map(type => (
+                      <SelectItem key={type.id} value={type.id.toString()}>{type.type_name}</SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
               </div>
               <div>
-                <label className="text-sm font-medium dark:text-gray-300">Service</label>
+                <label className="text-sm font-medium dark:text-gray-300">Due Date *</label>
                 <Input
-                  placeholder="Enter service name"
-                  value={newPayment.service}
-                  onChange={(e) => setNewPayment({ ...newPayment, service: e.target.value })}
+                  type="date"
+                  value={newVoucher.dueDate}
+                  onChange={(e) => setNewVoucher({ ...newVoucher, dueDate: e.target.value })}
                   className="mt-1 dark:bg-gray-900 dark:border-gray-700 dark:text-white"
                 />
               </div>
-              <div>
-                <label className="text-sm font-medium dark:text-gray-300">Date</label>
+              <div className="md:col-span-2">
+                <label className="text-sm font-medium dark:text-gray-300">Description</label>
                 <Input
-                  type="date"
-                  value={newPayment.date}
-                  onChange={(e) => setNewPayment({ ...newPayment, date: e.target.value })}
+                  placeholder="Enter voucher description"
+                  value={newVoucher.description}
+                  onChange={(e) => setNewVoucher({ ...newVoucher, description: e.target.value })}
                   className="mt-1 dark:bg-gray-900 dark:border-gray-700 dark:text-white"
                 />
               </div>
               <div>
                 <label className="text-sm font-medium dark:text-gray-300">Status</label>
-                <Select value={newPayment.status} onValueChange={(value) => setNewPayment({ ...newPayment, status: value })}>
+                <Select value={newVoucher.status} onValueChange={(value) => setNewVoucher({ ...newVoucher, status: value })}>
                   <SelectTrigger className="mt-1 dark:bg-gray-900 dark:border-gray-700 dark:text-white">
                     <SelectValue placeholder="Select status" />
                   </SelectTrigger>
                   <SelectContent className="dark:bg-gray-900 dark:border-gray-700">
                     <SelectItem value="paid">Paid</SelectItem>
                     <SelectItem value="pending">Pending</SelectItem>
-                    <SelectItem value="failed">Failed</SelectItem>
+                    <SelectItem value="overdue">Overdue</SelectItem>
                   </SelectContent>
                 </Select>
+              </div>
+              <div>
+                <label className="text-sm font-medium dark:text-gray-300">Attachment</label>
+                <Input
+                  type="file"
+                  onChange={(e) => setNewVoucher({ ...newVoucher, attachment: e.target.files[0] })}
+                  className="mt-1 dark:bg-gray-900 dark:border-gray-700 dark:text-white"
+                />
               </div>
             </div>
           </div>
@@ -1122,14 +1033,22 @@ export function Payments({ payments, onPaymentCreated, onStatusUpdate }) {
               variant="outline"
               onClick={() => {
                 setIsCreateDialogOpen(false);
-                setNewPayment({ customerName: '', paymentMethod: 'Stripe', amount: '', status: 'pending', date: new Date().toISOString().split('T')[0], service: '', invoiceNumber: '', callReference: '' });
+                setNewVoucher({
+                  clientId: '',
+                  paymentTypeId: '',
+                  amount: '',
+                  dueDate: new Date().toISOString().split('T')[0],
+                  description: '',
+                  status: 'pending',
+                  attachment: null
+                });
               }}
               className="dark:bg-gray-900 dark:border-gray-700 dark:text-white"
             >
               Cancel
             </Button>
-            <Button onClick={handleCreatePayment}>
-              Create Payment
+            <Button onClick={handleCreateVoucher}>
+              Create Voucher
             </Button>
           </DialogFooter>
         </DialogContent>

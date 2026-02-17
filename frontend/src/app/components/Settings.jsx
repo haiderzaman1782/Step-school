@@ -1,10 +1,10 @@
 import React, { useState } from "react";
-import { 
-  Save, 
-  RotateCcw, 
-  Globe, 
-  Building2, 
-  Calendar, 
+import {
+  Save,
+  RotateCcw,
+  Globe,
+  Building2,
+  Calendar,
   Bell,
   Upload,
   X,
@@ -28,7 +28,7 @@ import { cn } from "./ui/utils.js";
 export function Settings() {
   // General Settings State
   const [generalSettings, setGeneralSettings] = useState({
-    applicationName: "AI Booking Voice System",
+    applicationName: "Step School Payment Portal",
     logo: null,
     logoPreview: null,
     timezone: "America/New_York",
@@ -101,7 +101,7 @@ export function Settings() {
 
   // Default values for reset
   const defaultGeneralSettings = {
-    applicationName: "AI Booking Voice System",
+    applicationName: "Step School Payment Portal",
     logo: null,
     logoPreview: null,
     timezone: "America/New_York",
@@ -291,7 +291,7 @@ export function Settings() {
     }
     setBusinessSettings({
       ...businessSettings,
-      services: businessSettings.services.map(s => 
+      services: businessSettings.services.map(s =>
         s.id === editingService.id ? editingService : s
       )
     });
@@ -949,7 +949,7 @@ export function Settings() {
                 <h3 className="text-sm font-semibold text-gray-900 dark:text-white">
                   Cancellation & Reschedule Rules
                 </h3>
-                
+
                 <div className="space-y-4">
                   <div className="flex items-center justify-between">
                     <div>
@@ -1063,7 +1063,7 @@ export function Settings() {
                 <h3 className="text-sm font-semibold text-gray-900 dark:text-white">
                   Notification Channels
                 </h3>
-                
+
                 <div className="space-y-4">
                   <div className="flex items-center justify-between">
                     <div>
@@ -1142,7 +1142,7 @@ export function Settings() {
                 <h3 className="text-sm font-semibold text-gray-900 dark:text-white">
                   Notification Types
                 </h3>
-                
+
                 <div className="space-y-4">
                   <div className="flex items-center justify-between">
                     <div>
