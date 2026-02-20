@@ -16,6 +16,7 @@ export default function ClientForm({ onSuccess, onCancel }) {
     const [formData, setFormData] = useState({
         name: '',
         director_name: '',
+        admin_email: '',
         city: '',
         seat_cost: 30000,
     });
@@ -139,6 +140,17 @@ export default function ClientForm({ onSuccess, onCancel }) {
                                 value={formData.director_name}
                                 onChange={(e) => setFormData({ ...formData, director_name: e.target.value })}
                                 placeholder="Director's Full Name"
+                            />
+                        </div>
+                        <div className="space-y-2">
+                            <label className="text-xs font-black uppercase tracking-[0.2em] text-muted-foreground/60 ml-1">Admin Email (Portal Login)</label>
+                            <input
+                                required
+                                type="email"
+                                className="w-full px-6 py-4 bg-muted/5 border border-border/50 rounded-2xl focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all font-medium"
+                                value={formData.admin_email}
+                                onChange={(e) => setFormData({ ...formData, admin_email: e.target.value })}
+                                placeholder="director@school.com"
                             />
                         </div>
                         <div className="space-y-2">

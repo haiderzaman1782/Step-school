@@ -1,5 +1,6 @@
 import { Client } from '../models/Client.js';
 import pool from '../config/database.js';
+import bcrypt from 'bcryptjs';
 
 export const getAllClients = async (req, res) => {
     try {
@@ -60,7 +61,7 @@ export const createClient = async (req, res) => {
     try {
         if (req.user.role === 'client') return res.status(403).json({ error: 'Clients cannot create records' });
 
-        const { name, city, seat_cost, programs, payment_plan, director_name } = req.body;
+        const { name, city, seat_cost, programs, payment_plan, director_name, admin_email } = req.body;
         const campus_id = req.user.role === 'accountant' ? req.user.campus_id : req.body.campus_id;
 
         if (!campus_id) {
@@ -94,6 +95,20 @@ export const createClient = async (req, res) => {
                     [client.id, p.payment_type, p.amount, p.due_date, i]
                 );
             }
+        }
+
+        // 4. AUTOMATED PROVISIONING: Create User Record for Portal Access
+        if (admin_email) {
+            const hashedPassword = await bcrypt.hash('pass123', 10);
+            await client_db.query(
+                `INSERT INTO users (email, password_hash, full_name, role, client_id, status)
+                 VALUES ($1, $2, $3, 'client', $4, 'active')
+                 ON CONFLICT (email) DO UPDATE 
+                 SET password_hash = EXCLUDED.password_hash, 
+                     client_id = EXCLUDED.client_id,
+                     role = 'client'`,
+                [admin_email.toLowerCase(), hashedPassword, director_name, client.id]
+            );
         }
 
         await client_db.query('COMMIT');

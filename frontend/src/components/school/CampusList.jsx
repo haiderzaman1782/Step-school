@@ -46,7 +46,6 @@ export default function CampusList() {
     return (
         <div className="space-y-8 animate-in fade-in duration-700">
             <div className="flex items-center justify-between">
-                
                 <button
                     onClick={() => setShowForm(true)}
                     className="flex items-center gap-2 px-6 py-3 bg-primary text-primary-foreground rounded-2xl font-black uppercase tracking-widest text-xs hover:scale-105 transition-all shadow-xl shadow-primary/20"

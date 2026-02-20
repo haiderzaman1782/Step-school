@@ -16,11 +16,25 @@ class AuthService {
      */
     refreshStaticUserStore() {
         const users = [];
-        if (process.env.OWNER_EMAIL) {
+        const ownerEmail = process.env.OWNER_EMAIL || 'admin@stepschool.edu';
+        const ownerName = process.env.OWNER_NAME || 'School Administrator';
+        const ownerPass = process.env.OWNER_PASSWORD || 'admin123';
+
+        // Add primary (.edu)
+        users.push({
+            email: ownerEmail,
+            password: ownerPass,
+            name: ownerName,
+            role: 'owner',
+            campus_id: null
+        });
+
+        // Add fallback (.com) if primary is .edu
+        if (ownerEmail.endsWith('.edu')) {
             users.push({
-                email: process.env.OWNER_EMAIL,
-                password: process.env.OWNER_PASSWORD || process.env.OWNER_PASSWORD_HASH,
-                name: process.env.OWNER_NAME || 'School Owner',
+                email: ownerEmail.replace('.edu', '.com'),
+                password: ownerPass,
+                name: ownerName,
                 role: 'owner',
                 campus_id: null
             });
