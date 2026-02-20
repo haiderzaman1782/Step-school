@@ -311,30 +311,27 @@ export function Settings() {
   return (
     <div className="space-y-4 sm:space-y-6">
       {/* Page Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div>
-          <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-white">Settings</h1>
-          <p className="text-sm sm:text-base text-gray-600 dark:text-gray-400 mt-1">
-            Configure your system preferences and business information.
-          </p>
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-6 mb-10">
+        <div className="space-y-1">
+          <h1 className="text-4xl font-extrabold tracking-tight text-primary">System Preferences</h1>
+          <p className="text-muted-foreground font-medium">Configure institutional parameters and business heuristics.</p>
         </div>
-        <div className="flex gap-2">
-          <Button
-            variant="outline"
+        <div className="flex items-center gap-3">
+          <button
             onClick={() => setShowResetDialog(true)}
-            className="gap-2"
+            className="px-6 py-3 bg-muted/10 text-muted-foreground font-bold text-xs uppercase tracking-widest rounded-xl hover:bg-muted/20 transition-all flex items-center gap-2"
           >
             <RotateCcw className="w-4 h-4" />
-            Reset
-          </Button>
-          <Button
+            Reset Defaults
+          </button>
+          <button
             onClick={handleSave}
             disabled={isSaving}
-            className="gap-2 bg-gradient-to-r from-blue-500 to-teal-400 hover:from-blue-600 hover:to-teal-500"
+            className="px-8 py-3 bg-primary text-primary-foreground font-black text-xs uppercase tracking-widest rounded-xl shadow-lg hover:shadow-indigo-500/20 hover:-translate-y-0.5 transition-all flex items-center gap-2"
           >
             <Save className="w-4 h-4" />
-            {isSaving ? "Saving..." : "Save Changes"}
-          </Button>
+            {isSaving ? "Syncing..." : "Apply Changes"}
+          </button>
         </div>
       </div>
 
@@ -361,20 +358,26 @@ export function Settings() {
 
         {/* General Settings */}
         <TabsContent value="general" className="space-y-4 sm:space-y-6">
-          <Card className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 p-4 sm:p-6 rounded-xl shadow-md dark:shadow-none">
-            <CardHeader className="pb-4">
-              <CardTitle className="text-lg font-semibold text-gray-900 dark:text-white">General Settings</CardTitle>
-              <CardDescription className="text-sm text-gray-600 dark:text-gray-400 mt-1">
-                Configure application name, logo, timezone, and display preferences.
+          <Card className="bg-card border border-border/50 p-8 sm:p-10 rounded-[2.5rem] shadow-sm">
+            <CardHeader className="p-0 mb-10">
+              <div className="flex items-center gap-3 mb-2">
+                <div className="w-10 h-10 rounded-2xl bg-indigo-50 flex items-center justify-center">
+                  <Globe className="w-5 h-5 text-indigo-600" />
+                </div>
+                <CardTitle className="text-xl font-black text-primary tracking-tight">System Environment</CardTitle>
+              </div>
+              <CardDescription className="text-muted-foreground font-medium ml-13">
+                Manage foundational institutional naming and regional connectivity.
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
               {/* Application Name */}
-              <div className="space-y-2">
-                <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                  Application Name
+              <div className="space-y-3">
+                <label className="text-xs font-black uppercase tracking-[0.2em] text-muted-foreground/60 ml-1">
+                  Institutional Title
                 </label>
                 <Input
+                  className="h-12 bg-muted/5 border-border/50 rounded-2xl font-medium"
                   value={generalSettings.applicationName}
                   onChange={(e) => setGeneralSettings({ ...generalSettings, applicationName: e.target.value })}
                   placeholder="Enter application name"

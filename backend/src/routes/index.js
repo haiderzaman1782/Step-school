@@ -1,70 +1,68 @@
 import express from 'express';
 import { login, getMe } from '../controllers/authController.js';
-import { authenticateToken, authorizeRoles } from '../middleware/auth.js';
 import {
-    getAllClients,
-    getClientById,
-    createClient,
-    updateClient,
-    deleteClient
+    getAllClients, getClientById, createClient, updateClient, deleteClient
 } from '../controllers/clientsController.js';
 import {
-    getAllVouchers,
-    getVoucherById,
-    createVoucher,
-    updateVoucherStatus,
-    deleteVoucher,
-    downloadVoucherPDF
+    getAllVouchers, getVoucherById, generateVoucher, createManualVoucher, recordPayment, editPayment, deleteVoucher, cancelVoucher, downloadPDF
 } from '../controllers/vouchersController.js';
 import {
-    getAllPaymentTypes,
-    createPaymentType,
-    updatePaymentType
-} from '../controllers/paymentTypesController.js';
-import {
-    getAccountantMetrics,
-    getClientMetrics
-} from '../controllers/dashboardController.js';
-import upload from '../middleware/upload.js';
-
+    getAllCampuses, createCampus, deleteCampus
+} from '../controllers/campusesController.js';
+import jwt from 'jsonwebtoken';
 
 const router = express.Router();
 
-// Auth Routes
+// Middleware to verify JWT and attach user info
+const auth = (req, res, next) => {
+    const token = req.headers.authorization?.split(' ')[1];
+    if (!token) return res.status(401).json({ error: 'Unauthorized' });
+
+    try {
+        const decoded = jwt.verify(token, process.env.JWT_SECRET);
+        req.user = decoded;
+        next();
+    } catch (error) {
+        return res.status(401).json({ error: 'Invalid token' });
+    }
+};
+
+// Role check middleware
+const roles = (...allowed) => (req, res, next) => {
+    if (!allowed.includes(req.user.role)) {
+        return res.status(403).json({ error: 'Access denied' });
+    }
+    next();
+};
+
+// Auth
 router.post('/auth/login', login);
-router.get('/auth/me', authenticateToken, getMe);
+router.get('/auth/me', auth, getMe);
 
-// Clients Routes (Accountant Only)
-router.get('/clients', authenticateToken, authorizeRoles('accountant'), getAllClients);
-router.get('/clients/:id', authenticateToken, authorizeRoles('accountant'), getClientById);
-router.post('/clients', authenticateToken, authorizeRoles('accountant'), upload.single('avatar'), createClient);
-router.put('/clients/:id', authenticateToken, authorizeRoles('accountant'), upload.single('avatar'), updateClient);
-router.delete('/clients/:id', authenticateToken, authorizeRoles('accountant'), deleteClient);
-router.get('/clients/:id/vouchers', authenticateToken, authorizeRoles('accountant'), getAllVouchers);
+// Clients
+router.get('/clients', auth, getAllClients);
+router.get('/clients/:id', auth, getClientById);
+router.post('/clients', auth, roles('accountant', 'owner'), createClient);
+router.put('/clients/:id', auth, roles('accountant', 'owner'), updateClient);
+router.delete('/clients/:id', auth, roles('accountant', 'owner'), deleteClient);
 
-// Vouchers Routes
-router.get('/vouchers', authenticateToken, getAllVouchers);
-router.get('/vouchers/:id', authenticateToken, getVoucherById);
-router.post('/vouchers', authenticateToken, authorizeRoles('accountant'), upload.single('attachment'), createVoucher);
-router.patch('/vouchers/:id/status', authenticateToken, authorizeRoles('accountant'), updateVoucherStatus);
-router.get('/vouchers/:id/pdf', authenticateToken, downloadVoucherPDF);
-router.delete('/vouchers/:id', authenticateToken, authorizeRoles('accountant'), deleteVoucher);
+// Campuses
+router.get('/campuses', auth, getAllCampuses);
+router.post('/campuses', auth, roles('owner'), createCampus);
+router.delete('/campuses/:id', auth, roles('owner'), deleteCampus);
 
-// Payment Types Routes
-router.get('/payment-types', authenticateToken, getAllPaymentTypes);
-router.post('/payment-types', authenticateToken, authorizeRoles('accountant'), createPaymentType);
-router.put('/payment-types/:id', authenticateToken, authorizeRoles('accountant'), updatePaymentType);
+// Vouchers
+router.get('/vouchers', auth, getAllVouchers);
+router.get('/vouchers/:id', auth, getVoucherById);
+router.post('/vouchers/generate', auth, roles('accountant', 'owner'), generateVoucher);
+router.post('/vouchers/manual', auth, roles('accountant', 'owner'), createManualVoucher);
+router.patch('/vouchers/:voucherId/record-payment', auth, roles('accountant', 'owner'), recordPayment);
+router.put('/vouchers/:voucherId/payment', auth, roles('accountant', 'owner'), editPayment);
+router.delete('/vouchers/:id', auth, roles('accountant', 'owner'), deleteVoucher);
+router.patch('/vouchers/:id/cancel', auth, roles('accountant', 'owner'), cancelVoucher);
+router.get('/vouchers/:id/pdf', auth, downloadPDF);
 
-// Users Routes (Admin/Accountant)
-router.get('/users', authenticateToken, authorizeRoles('accountant', 'admin'), getAllClients);
-router.get('/users/:id', authenticateToken, authorizeRoles('accountant', 'admin'), getClientById);
-router.post('/users', authenticateToken, authorizeRoles('accountant', 'admin'), upload.single('avatar'), createClient);
-router.put('/users/:id', authenticateToken, authorizeRoles('accountant', 'admin'), upload.single('avatar'), updateClient);
-router.delete('/users/:id', authenticateToken, authorizeRoles('accountant', 'admin'), deleteClient);
-
-// Dashboard Routes
-router.get('/dashboard/accountant', authenticateToken, authorizeRoles('accountant'), getAccountantMetrics);
-router.get('/dashboard/client', authenticateToken, authorizeRoles('client'), getClientMetrics);
+// Legacy/Aliases (redirect or remove)
+// No longer using separate programs or fee-payments routes
 
 export default router;
-

@@ -1,78 +1,101 @@
 import pool from '../config/database.js';
-import bcrypt from 'bcryptjs';
 
 export const Client = {
-    findAll: async ({ limit = 10, offset = 0, search = '', status = '' }) => {
+    findAll: async ({ campus_id, client_id, search = '', limit = 10, offset = 0 }) => {
         let baseQuery = ' FROM clients WHERE 1=1';
         const params = [];
 
+        if (campus_id) {
+            params.push(campus_id);
+            baseQuery += ` AND campus_id = $${params.length}`;
+        }
+
+        if (client_id) {
+            params.push(client_id);
+            baseQuery += ` AND id = $${params.length}`;
+        }
+
         if (search) {
             params.push(`%${search}%`);
-            baseQuery += ` AND (full_name ILIKE $${params.length} OR email ILIKE $${params.length} OR client_id ILIKE $${params.length})`;
+            baseQuery += ` AND (name ILIKE $${params.length} OR city ILIKE $${params.length})`;
         }
 
-        if (status) {
-            params.push(status);
-            baseQuery += ` AND status = $${params.length}`;
-        }
-
-        // Get total count
         const countResult = await pool.query('SELECT COUNT(*)' + baseQuery, params);
-        const total = parseInt(countResult.rows[0].count);
 
-        // Get paginated results
-        const query = 'SELECT id, client_id, full_name, email, phone, address, avatar_url, role, status, created_at' +
-            baseQuery +
-            ` ORDER BY created_at DESC LIMIT $${params.length + 1} OFFSET $${params.length + 2}`;
+        const query = `
+      SELECT * ${baseQuery}
+      ORDER BY created_at DESC
+      LIMIT $${params.length + 1} OFFSET $${params.length + 2}
+    `;
         params.push(limit, offset);
 
         const result = await pool.query(query, params);
         return {
-            users: result.rows,
+            clients: result.rows,
             pagination: {
-                total,
+                total: parseInt(countResult.rows[0].count),
                 limit,
                 offset,
-                pages: Math.ceil(total / limit)
+                pages: Math.ceil(parseInt(countResult.rows[0].count) / limit)
             }
         };
     },
 
     findById: async (id) => {
-        const result = await pool.query('SELECT * FROM clients WHERE id = $1', [id]);
-        return result.rows[0];
+        // Get client with programs, payment plan and payment history (from vouchers)
+        const clientRes = await pool.query('SELECT * FROM clients WHERE id = $1', [id]);
+        const client = clientRes.rows[0];
+
+        if (!client) return null;
+
+        const programs = await pool.query('SELECT * FROM programs WHERE client_id = $1', [id]);
+        const paymentPlan = await pool.query('SELECT * FROM payment_plans WHERE client_id = $1 ORDER BY display_order', [id]);
+
+        // Derived payment history from vouchers
+        const paymentHistory = await pool.query(`
+      SELECT v.id as voucher_id, v.voucher_number, v.amount_paid, v.paid_date as payment_date, 
+             v.payment_method, v.payment_notes, p.payment_type as milestone
+      FROM vouchers v
+      JOIN payment_plans p ON v.payment_plan_id = p.id
+      WHERE v.client_id = $1 AND v.amount_paid > 0
+      ORDER BY v.paid_date DESC
+    `, [id]);
+
+        return {
+            ...client,
+            programs: programs.rows,
+            payment_plan: paymentPlan.rows,
+            payment_history: paymentHistory.rows
+        };
     },
 
-    findByEmail: async (email) => {
-        const result = await pool.query('SELECT * FROM clients WHERE email = $1', [email]);
-        return result.rows[0];
-    },
-
-    create: async (clientData) => {
-        const { client_id, full_name, email, phone, address, avatar_url, password, role, status } = clientData;
-        const password_hash = await bcrypt.hash(password, 10);
-
+    create: async (data, client_db = pool) => {
+        const { name, director_name, city, campus_id, seat_cost, created_by_accountant_name } = data;
         const query = `
-      INSERT INTO clients (client_id, full_name, email, phone, address, avatar_url, password_hash, role, status)
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
-      RETURNING id, client_id, full_name, email, phone, address, avatar_url, role, status, created_at
+      INSERT INTO clients (name, director_name, city, campus_id, seat_cost, created_by_accountant_name)
+      VALUES ($1, $2, $3, $4, $5, $6)
+      RETURNING *
     `;
-        const params = [client_id, full_name, email, phone, address, avatar_url, password_hash, role || 'client', status || 'active'];
-
-        const result = await pool.query(query, params);
+        const result = await client_db.query(query, [name, director_name, city, campus_id, seat_cost, created_by_accountant_name]);
         return result.rows[0];
     },
 
-    update: async (id, clientData) => {
-        const { full_name, email, phone, address, avatar_url, role, status } = clientData;
-        const query = `
-      UPDATE clients
-      SET full_name = $1, email = $2, phone = $3, address = $4, avatar_url = $5, role = $6, status = $7, updated_at = CURRENT_TIMESTAMP
-      WHERE id = $8
-      RETURNING id, client_id, full_name, email, phone, address, avatar_url, role, status, updated_at
-    `;
-        const params = [full_name, email, phone, address, avatar_url, role, status, id];
+    update: async (id, data) => {
+        const fields = [];
+        const params = [];
+        let i = 1;
 
+        Object.entries(data).forEach(([key, value]) => {
+            if (key !== 'id' && key !== 'total_seats' && key !== 'total_amount') {
+                fields.push(`${key} = $${i++}`);
+                params.push(value);
+            }
+        });
+
+        if (fields.length === 0) return null;
+
+        params.push(id);
+        const query = `UPDATE clients SET ${fields.join(', ')}, updated_at = NOW() WHERE id = $${i} RETURNING *`;
         const result = await pool.query(query, params);
         return result.rows[0];
     },

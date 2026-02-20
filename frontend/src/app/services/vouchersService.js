@@ -1,39 +1,58 @@
 import api from './api';
-import { transformVoucher } from '../utils/dataTransformers.js';
 
 export const vouchersService = {
-    getAll: async (params) => {
+    getAll: async (params = {}) => {
         const response = await api.get('/vouchers', { params });
-        return (response.data || []).map(transformVoucher);
+        return response.data;
     },
+
     getById: async (id) => {
         const response = await api.get(`/vouchers/${id}`);
-        return transformVoucher(response.data);
+        return response.data;
     },
-    create: async (formData) => {
-        const response = await api.post('/vouchers', formData, {
-            headers: { 'Content-Type': 'multipart/form-data' }
-        });
-        return transformVoucher(response.data);
+
+    generate: async (data) => {
+        const response = await api.post('/vouchers/generate', data);
+        return response.data;
     },
-    updateStatus: async (id, statusData) => {
-        const response = await api.patch(`/vouchers/${id}/status`, statusData);
-        return transformVoucher(response.data);
+
+    createManual: async (data) => {
+        const response = await api.post('/vouchers/manual', data);
+        return response.data;
     },
-    downloadPDF: async (id, voucherNumber) => {
-        const response = await api.get(`/vouchers/${id}/pdf`, {
-            responseType: 'blob'
-        });
-        const url = window.URL.createObjectURL(new Blob([response.data]));
-        const link = document.createElement('a');
-        link.href = url;
-        link.setAttribute('download', `voucher-${voucherNumber}.pdf`);
-        document.body.appendChild(link);
-        link.click();
-        link.remove();
-    },
+
     delete: async (id) => {
         const response = await api.delete(`/vouchers/${id}`);
         return response.data;
-    }
+    },
+
+    recordPayment: async (voucherId, data) => {
+        // Note: PATCH for recording a payment increment
+        const response = await api.patch(`/vouchers/${voucherId}/record-payment`, data);
+        return response.data;
+    },
+
+    editPayment: async (voucherId, data) => {
+        const response = await api.put(`/vouchers/${voucherId}/payment`, data);
+        return response.data;
+    },
+
+    cancel: async (id) => {
+        const response = await api.patch(`/vouchers/${id}/cancel`);
+        return response.data;
+    },
+
+    downloadPDF: async (id, voucherNumber) => {
+        const response = await api.get(`/vouchers/${id}/pdf`, {
+            responseType: 'blob',
+        });
+        const url = URL.createObjectURL(new Blob([response.data], { type: 'application/pdf' }));
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `${voucherNumber || 'voucher'}.pdf`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+    },
 };

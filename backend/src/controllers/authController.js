@@ -1,9 +1,4 @@
-import jwt from 'jsonwebtoken';
-import bcrypt from 'bcryptjs';
-import { Client } from '../models/Client.js';
-import dotenv from 'dotenv';
-
-dotenv.config();
+import AuthService from '../services/AuthService.js';
 
 export const login = async (req, res) => {
     try {
@@ -13,63 +8,28 @@ export const login = async (req, res) => {
             return res.status(400).json({ error: 'Email and password are required' });
         }
 
-        const user = await Client.findByEmail(email);
-
-        if (!user) {
-            return res.status(401).json({ error: 'Invalid email or password' });
-        }
-
-        const isMatch = await bcrypt.compare(password, user.password_hash);
-
-        if (!isMatch) {
-            return res.status(401).json({ error: 'Invalid email or password' });
-        }
-
-        if (user.status !== 'active') {
-            return res.status(403).json({ error: 'Account is deactivated' });
-        }
-
-        if (!process.env.JWT_SECRET) {
-            console.error('CRITICAL ERROR: JWT_SECRET is not defined in environment variables.');
-            return res.status(500).json({ error: 'Server configuration error: JWT_SECRET is missing.' });
-        }
-
-        const token = jwt.sign(
-            { id: user.id, role: user.role, email: user.email },
-            process.env.JWT_SECRET,
-            { expiresIn: process.env.JWT_EXPIRES_IN || '7d' }
-        );
-
-        res.json({
-            token,
-            user: {
-                id: user.id,
-                fullName: user.full_name,
-                email: user.email,
-                role: user.role,
-                avatar: user.avatar_url
-            }
-        });
-
+        const result = await AuthService.login(email, password);
+        res.json(result);
     } catch (error) {
         console.error('Login error:', error);
-        res.status(500).json({ error: 'Internal server error' });
+        res.status(401).json({ error: error.message || 'Authentication failed' });
     }
 };
 
 export const getMe = async (req, res) => {
     try {
-        const user = await Client.findById(req.user.id);
-        if (!user) {
-            return res.status(404).json({ error: 'User not found' });
+        // In the simplified model, user info is in the token/req.user
+        // No need to query the database since users table is gone.
+        if (!req.user) {
+            return res.status(401).json({ error: 'Not authenticated' });
         }
 
         res.json({
-            id: user.id,
-            fullName: user.full_name,
-            email: user.email,
-            role: user.role,
-            avatar: user.avatar_url
+            fullName: req.user.name,
+            email: req.user.email,
+            role: req.user.role,
+            campus_id: req.user.campus_id || null,
+            client_id: req.user.client_id || null
         });
     } catch (error) {
         res.status(500).json({ error: 'Internal server error' });

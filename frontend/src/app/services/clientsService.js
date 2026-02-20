@@ -1,7 +1,7 @@
 import api from './api';
 
 export const clientsService = {
-    getAll: async (params) => {
+    getAll: async (params = {}) => {
         const response = await api.get('/clients', { params });
         return response.data;
     },
@@ -11,17 +11,13 @@ export const clientsService = {
         return response.data;
     },
 
-    create: async (formData) => {
-        const response = await api.post('/clients', formData, {
-            headers: { 'Content-Type': 'multipart/form-data' }
-        });
+    create: async (data) => {
+        const response = await api.post('/clients', data);
         return response.data;
     },
 
-    update: async (id, formData) => {
-        const response = await api.put(`/clients/${id}`, formData, {
-            headers: { 'Content-Type': 'multipart/form-data' }
-        });
+    update: async (id, data) => {
+        const response = await api.put(`/clients/${id}`, data);
         return response.data;
     },
 

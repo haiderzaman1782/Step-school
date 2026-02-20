@@ -12,8 +12,8 @@ import { formatDistanceToNow } from "date-fns";
 
 const menuItems = [
   { id: "dashboard", label: "Dashboard", icon: LayoutDashboard },
-  { id: "payments", label: "Vouchers", icon: CreditCard },
-  { id: "users", label: "Clients", icon: Users },
+  { id: "vouchers", label: "Vouchers", icon: CreditCard },
+  { id: "clients", label: "Clients", icon: Users },
   { id: "settings", label: "Settings", icon: Settings },
 ];
 
