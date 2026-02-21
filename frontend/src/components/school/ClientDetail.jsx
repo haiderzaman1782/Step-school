@@ -158,7 +158,7 @@ export default function ClientDetail({ clientId, onBack, isClientView = false })
                                 <div key={m.id} className={`flex items-center justify-between p-4 rounded-xl border transition-all ${cardBg}`}>
                                     <div className="flex flex-col gap-1">
                                         <span className="font-bold text-sm">{PAYMENT_TYPE_LABELS[m.payment_type] || m.payment_type}</span>
-                                        <span className="text-base font-mono text-muted-foreground">{formatPkr(m.amount)}</span>
+                                        <span className="text-base font-mono text-muted-foreground">{formatPkr(linkedVoucher?.amount ?? m.amount)}</span>
                                         {/* Show voucher details when issued but unpaid/partial */}
                                         {linkedVoucher && !isPaid && (
                                             <div className="mt-1 flex flex-col gap-0.5 text-[10px] font-mono opacity-70">
