@@ -132,18 +132,64 @@ export default function ClientDetail({ clientId, onBack, isClientView = false })
                         <h3 className="font-bold">Fee Schedule & Milestones</h3>
                     </div>
                     <div className="p-6 space-y-4">
-                        {client.payment_plan.map(m => {
-                            const isPaid = client.payment_history.some(h => h.milestone === m.payment_type);
+                        {client.payment_plan.length === 0 ? (
+                            <div className="py-8 text-center text-muted-foreground italic text-sm">
+                                No fee schedule defined for this institution yet.
+                                {!isClientView && (
+                                    <p className="text-xs mt-1 opacity-60">Use the voucher section to issue manual payments.</p>
+                                )}
+                            </div>
+                        ) : client.payment_plan.map(m => {
+                            // Find linked voucher from milestone_vouchers (includes pending/partial)
+                            const linkedVoucher = (client.milestone_vouchers || []).find(
+                                v => v.payment_plan_id === m.id
+                            );
+                            const isPaid = linkedVoucher?.status === 'paid';
+                            const isPartial = linkedVoucher?.status === 'partial';
+                            const isPending = linkedVoucher?.status === 'pending';
+
+                            const cardBg = isPaid
+                                ? 'bg-success/5 border-success/20'
+                                : isPartial
+                                    ? 'bg-amber-50 border-amber-200'
+                                    : isPending
+                                        ? 'bg-indigo-50 border-indigo-200'
+                                        : 'bg-background border-border hover:border-primary/30';
+
                             return (
-                                <div key={m.id} className={`flex items-center justify-between p-4 rounded-xl border transition-all ${isPaid ? 'bg-success/5 border-success/20' : 'bg-background border-border hover:border-primary/30'}`}>
-                                    <div className="flex flex-col">
+                                <div key={m.id} className={`flex items-center justify-between p-4 rounded-xl border transition-all ${cardBg}`}>
+                                    <div className="flex flex-col gap-1">
                                         <span className="font-bold text-sm">{PAYMENT_TYPE_LABELS[m.payment_type] || m.payment_type}</span>
-                                        <span className="text-lg font-mono text-muted-foreground">{formatPkr(m.amount)}</span>
+                                        <span className="text-base font-mono text-muted-foreground">{formatPkr(m.amount)}</span>
+                                        {/* Show voucher details when issued but unpaid/partial */}
+                                        {linkedVoucher && !isPaid && (
+                                            <div className="mt-1 flex flex-col gap-0.5 text-[10px] font-mono opacity-70">
+                                                <span>#{linkedVoucher.voucher_number}</span>
+                                                {(isPartial || isPending) && (
+                                                    <>
+                                                        <span className="text-success font-bold">
+                                                            Paid: {formatPkr(linkedVoucher.amount_paid)}
+                                                        </span>
+                                                        <span className="text-destructive font-bold">
+                                                            Due: {formatPkr(linkedVoucher.balance)}
+                                                        </span>
+                                                    </>
+                                                )}
+                                            </div>
+                                        )}
                                     </div>
-                                    <div className="milestone-action">
+                                    <div className="milestone-action flex flex-col items-end gap-1">
                                         {isPaid ? (
                                             <span className="flex items-center gap-1 text-xs font-bold text-success uppercase tracking-wider">
                                                 Settled ✅
+                                            </span>
+                                        ) : isPartial ? (
+                                            <span className="flex items-center gap-1 text-xs font-bold text-amber-600 uppercase tracking-wider">
+                                                Partial ⏳
+                                            </span>
+                                        ) : isPending ? (
+                                            <span className="flex items-center gap-1 text-xs font-bold text-indigo-600 uppercase tracking-wider">
+                                                Awaiting Payment
                                             </span>
                                         ) : !isClientView ? (
                                             <button
@@ -153,7 +199,7 @@ export default function ClientDetail({ clientId, onBack, isClientView = false })
                                                 Generate Voucher
                                             </button>
                                         ) : (
-                                            <span className="text-xs text-muted-foreground italic font-medium">Pending Release</span>
+                                            <span className="text-xs text-muted-foreground italic font-medium">Not Issued</span>
                                         )}
                                     </div>
                                 </div>
@@ -180,7 +226,11 @@ export default function ClientDetail({ clientId, onBack, isClientView = false })
                             <tbody className="divide-y divide-border">
                                 {client.payment_history.map(h => (
                                     <tr key={h.voucher_id} className="hover:bg-muted/5 transition-colors">
-                                        <td className="px-6 py-4 text-sm text-muted-foreground">{new Date(h.payment_date).toLocaleDateString('en-PK')}</td>
+                                        <td className="px-6 py-4 text-sm text-muted-foreground">
+                                            {h.payment_date && !isNaN(new Date(h.payment_date))
+                                                ? new Date(h.payment_date).toLocaleDateString('en-PK')
+                                                : '—'}
+                                        </td>
                                         <td className="px-6 py-4">
                                             <div className="flex flex-col">
                                                 <span className="text-sm font-bold">{PAYMENT_TYPE_LABELS[h.milestone] || h.milestone}</span>

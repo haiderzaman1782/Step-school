@@ -243,6 +243,7 @@ function DashboardContent() {
                   <SchoolVoucherList
                     key={refreshKey}
                     clientId={currentUser?.role === 'client' ? currentUser.client_id : null}
+                    isClientView={currentUser?.role === 'client'}
                   />
                 </div>
               </div>

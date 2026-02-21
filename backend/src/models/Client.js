@@ -51,21 +51,35 @@ export const Client = {
         const programs = await pool.query('SELECT * FROM programs WHERE client_id = $1', [id]);
         const paymentPlan = await pool.query('SELECT * FROM payment_plans WHERE client_id = $1 ORDER BY display_order', [id]);
 
-        // Derived payment history from vouchers
+        // Derived payment history from vouchers (paid or partial)
         const paymentHistory = await pool.query(`
-      SELECT v.id as voucher_id, v.voucher_number, v.amount_paid, v.paid_date as payment_date, 
-             v.payment_method, v.payment_notes, p.payment_type as milestone
+      SELECT v.id as voucher_id, v.voucher_number, v.amount_paid,
+             COALESCE(v.paid_date, v.updated_at) as payment_date,
+             v.payment_method, v.payment_notes,
+             COALESCE(p.payment_type, 'manual') as milestone
       FROM vouchers v
-      JOIN payment_plans p ON v.payment_plan_id = p.id
+      LEFT JOIN payment_plans p ON v.payment_plan_id = p.id
       WHERE v.client_id = $1 AND v.amount_paid > 0
-      ORDER BY v.paid_date DESC
+      ORDER BY COALESCE(v.paid_date, v.updated_at) DESC
+    `, [id]);
+
+        // All milestone-linked vouchers (including pending) for milestone display
+        const milestoneVouchers = await pool.query(`
+      SELECT v.id, v.voucher_number, v.amount, v.amount_paid, v.balance,
+             v.status, v.payment_plan_id
+      FROM vouchers v
+      WHERE v.client_id = $1
+        AND v.payment_plan_id IS NOT NULL
+        AND v.status != 'cancelled'
+      ORDER BY v.created_at DESC
     `, [id]);
 
         return {
             ...client,
             programs: programs.rows,
             payment_plan: paymentPlan.rows,
-            payment_history: paymentHistory.rows
+            payment_history: paymentHistory.rows,
+            milestone_vouchers: milestoneVouchers.rows
         };
     },
 

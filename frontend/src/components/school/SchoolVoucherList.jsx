@@ -31,7 +31,7 @@ const PAYMENT_TYPE_LABELS = {
 const formatPkr = (n) =>
     parseFloat(n || 0).toLocaleString('en-PK', { style: 'currency', currency: 'PKR', maximumFractionDigits: 0 });
 
-export default function SchoolVoucherList({ clientId }) {
+export default function SchoolVoucherList({ clientId, isClientView = false }) {
     const [vouchers, setVouchers] = useState([]);
     const [total, setTotal] = useState(0);
     const [loading, setLoading] = useState(true);
@@ -117,13 +117,17 @@ export default function SchoolVoucherList({ clientId }) {
                     <button type="submit" className="px-8 py-3 bg-primary text-primary-foreground rounded-xl font-bold hover:bg-primary/90 transition-colors shadow-sm">
                         Search
                     </button>
-                    <div className="w-px h-8 bg-border/50 mx-2 hidden lg:block" />
-                    <button
-                        onClick={() => setShowManualModal(true)}
-                        className="flex items-center gap-2 px-6 py-3 bg-indigo-50 text-indigo-700 rounded-xl font-black uppercase tracking-widest text-[10px] hover:bg-indigo-100 transition-all shadow-sm border border-indigo-100"
-                    >
-                        <Plus className="w-4 h-4" /> Issue Voucher
-                    </button>
+                    {!isClientView && (
+                        <>
+                            <div className="w-px h-8 bg-border/50 mx-2 hidden lg:block" />
+                            <button
+                                onClick={() => setShowManualModal(true)}
+                                className="flex items-center gap-2 px-6 py-3 bg-indigo-50 text-indigo-700 rounded-xl font-black uppercase tracking-widest text-[10px] hover:bg-indigo-100 transition-all shadow-sm border border-indigo-100"
+                            >
+                                <Plus className="w-4 h-4" /> Issue Voucher
+                            </button>
+                        </>
+                    )}
                 </div>
             </div>
 
@@ -158,7 +162,7 @@ export default function SchoolVoucherList({ clientId }) {
                                         <th className="px-8 py-5 text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground text-right text-success/80">Credit</th>
                                         <th className="px-8 py-5 text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground text-right text-destructive">Balance</th>
                                         <th className="px-8 py-5 text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground">State</th>
-                                        <th className="px-8 py-5 text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground pr-10">Options</th>
+                                        {!isClientView && <th className="px-8 py-5 text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground pr-10">Options</th>}
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y divide-border/20">
@@ -193,8 +197,47 @@ export default function SchoolVoucherList({ clientId }) {
                                                     {v.status === 'paid' ? 'Settled' : v.status}
                                                 </span>
                                             </td>
-                                            <td className="px-8 py-5 pr-10">
-                                                <div className="flex items-center gap-2">
+                                            {!isClientView && (
+                                                <td className="px-8 py-5 pr-10">
+                                                    <div className="flex items-center gap-2">
+                                                        <button
+                                                            className="p-2 rounded-xl text-muted-foreground hover:bg-primary/10 hover:text-primary transition-all"
+                                                            title="Download Record"
+                                                            onClick={() => vouchersService.downloadPDF(v.id, v.voucher_number)}
+                                                        >
+                                                            <Download className="w-4 h-4" />
+                                                        </button>
+
+                                                        {v.status !== 'paid' && v.status !== 'cancelled' && (
+                                                            <button
+                                                                className="px-4 py-1.5 bg-primary/10 text-primary text-[10px] font-black uppercase tracking-widest rounded-lg hover:bg-primary/20 transition-all border border-primary/20"
+                                                                onClick={() => setPaymentModal(v)}
+                                                            >
+                                                                Rec. Pay
+                                                            </button>
+                                                        )}
+
+                                                        {v.status === 'pending' && (
+                                                            <button
+                                                                className="p-2 rounded-xl text-destructive/40 hover:bg-destructive/10 hover:text-destructive transition-all"
+                                                                title="Void Voucher"
+                                                                onClick={() => handleCancel(v.id)}
+                                                            >
+                                                                <TrendingDown className="w-4 h-4" />
+                                                            </button>
+                                                        )}
+                                                        <button
+                                                            onClick={() => handleDeleteVoucher(v.id)}
+                                                            className="p-2 text-destructive hover:bg-destructive/10 rounded-xl transition-all"
+                                                            title="Delete Voucher"
+                                                        >
+                                                            <Trash2 className="w-5 h-5" />
+                                                        </button>
+                                                    </div>
+                                                </td>
+                                            )}
+                                            {isClientView && (
+                                                <td className="px-8 py-5 pr-10">
                                                     <button
                                                         className="p-2 rounded-xl text-muted-foreground hover:bg-primary/10 hover:text-primary transition-all"
                                                         title="Download Record"
@@ -202,34 +245,8 @@ export default function SchoolVoucherList({ clientId }) {
                                                     >
                                                         <Download className="w-4 h-4" />
                                                     </button>
-
-                                                    {v.status !== 'paid' && v.status !== 'cancelled' && (
-                                                        <button
-                                                            className="px-4 py-1.5 bg-primary/10 text-primary text-[10px] font-black uppercase tracking-widest rounded-lg hover:bg-primary/20 transition-all border border-primary/20"
-                                                            onClick={() => setPaymentModal(v)}
-                                                        >
-                                                            Rec. Pay
-                                                        </button>
-                                                    )}
-
-                                                    {v.status === 'pending' && (
-                                                        <button
-                                                            className="p-2 rounded-xl text-destructive/40 hover:bg-destructive/10 hover:text-destructive transition-all"
-                                                            title="Void Voucher"
-                                                            onClick={() => handleCancel(v.id)}
-                                                        >
-                                                            <TrendingDown className="w-4 h-4" />
-                                                        </button>
-                                                    )}
-                                                    <button
-                                                        onClick={() => handleDeleteVoucher(v.id)}
-                                                        className="p-2 text-destructive hover:bg-destructive/10 rounded-xl transition-all"
-                                                        title="Delete Voucher"
-                                                    >
-                                                        <Trash2 className="w-5 h-5" />
-                                                    </button>
-                                                </div>
-                                            </td>
+                                                </td>
+                                            )}
                                         </tr>
                                     ))}
                                 </tbody>
