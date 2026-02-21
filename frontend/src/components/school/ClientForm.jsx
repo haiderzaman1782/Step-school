@@ -113,7 +113,7 @@ export default function ClientForm({ onSuccess, onCancel }) {
 
             <form onSubmit={handleSubmit} className="space-y-8">
                 {/* Basic Info Card */}
-                <div className="bg-card border border-border/50 rounded-[2.5rem] p-10 shadow-sm">
+                <div className="bg-card border border-border/50 rounded-3xl md:rounded-[2.5rem] p-6 md:p-10 shadow-sm">
                     <div className="flex items-center gap-3 mb-8">
                         <div className="w-10 h-10 rounded-2xl bg-indigo-50 flex items-center justify-center">
                             <Building2 className="w-5 h-5 text-indigo-600" />
@@ -197,7 +197,7 @@ export default function ClientForm({ onSuccess, onCancel }) {
                 </div>
 
                 {/* Programs Section */}
-                <div className="bg-card border border-border/50 rounded-[2.5rem] p-10 shadow-sm relative overflow-hidden">
+                <div className="bg-card border border-border/50 rounded-3xl md:rounded-[2.5rem] p-6 md:p-10 shadow-sm relative overflow-hidden">
                     <div className="flex items-center justify-between mb-8">
                         <div className="flex items-center gap-3">
                             <div className="w-10 h-10 rounded-2xl bg-emerald-50 flex items-center justify-center">
@@ -244,7 +244,7 @@ export default function ClientForm({ onSuccess, onCancel }) {
                 </div>
 
                 {/* Contract Summary */}
-                <div className="bg-indigo-900 text-white rounded-[2.5rem] p-10 shadow-xl relative overflow-hidden group">
+                <div className="bg-indigo-900 text-white rounded-3xl md:rounded-[2.5rem] p-6 md:p-10 shadow-xl relative overflow-hidden group">
                     <div className="absolute top-0 right-0 p-8 opacity-10 group-hover:scale-110 transition-transform">
                         <Calculator className="w-32 h-32" />
                     </div>

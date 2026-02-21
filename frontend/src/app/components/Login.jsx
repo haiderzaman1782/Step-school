@@ -33,7 +33,7 @@ export function Login({ onLoginSuccess }) {
         <Sparkles className="absolute top-1/4 right-0 w-32 h-32 -rotate-12" />
       </div>
 
-      <div className="w-full max-w-lg bg-card border border-border/50 shadow-2xl rounded-[3rem] p-4 relative z-10">
+      <div className="w-full max-w-lg bg-card border border-border/50 shadow-2xl rounded-3xl md:rounded-[3rem] p-4 relative z-10">
         <div className="pt-12 pb-8 text-center space-y-3">
           <div className="flex justify-center mb-6">
             <div className="w-20 h-20 bg-primary/5 rounded-[2rem] flex items-center justify-center border border-primary/10 shadow-sm animate-pulse-subtle">
@@ -44,7 +44,7 @@ export function Login({ onLoginSuccess }) {
           <p className="text-muted-foreground text-sm font-medium uppercase tracking-[0.2em] opacity-60">Step School Management System</p>
         </div>
 
-        <div className="px-10 pb-12">
+        <div className="px-6 md:px-10 pb-12">
           <form onSubmit={handleSubmit} className="space-y-8">
             <div className="space-y-3">
               <label className="text-xs font-black uppercase tracking-[0.2em] text-muted-foreground/60 ml-2">Email Address</label>

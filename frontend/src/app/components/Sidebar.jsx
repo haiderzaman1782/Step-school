@@ -60,7 +60,7 @@ const Sidebar = ({ activeSection, onSectionChange, user }) => {
   );
 
   return (
-    <div className="flex flex-col h-full bg-sidebar border-r border-sidebar-border w-64 shadow-sm">
+    <div className="hidden lg:flex flex-col h-full bg-sidebar border-r border-sidebar-border w-64 shadow-sm">
       <div className="p-6 flex items-center gap-3">
         <div className="w-8 h-8 rounded-lg bg-primary flex items-center justify-center">
           <ShieldCheck className="w-5 h-5 text-primary-foreground" />
@@ -77,8 +77,8 @@ const Sidebar = ({ activeSection, onSectionChange, user }) => {
             key={`${item.id}-${item.label}`}
             onClick={() => onSectionChange(item.id)}
             className={`w-full flex items-center gap-3 px-4 py-2.5 rounded-xl transition-all duration-200 group relative ${activeSection === item.id
-                ? 'bg-primary/10 text-primary font-medium'
-                : 'text-muted-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground'
+              ? 'bg-primary/10 text-primary font-medium'
+              : 'text-muted-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground'
               }`}
           >
             <item.icon className="w-[18px] h-[18px]" />

@@ -358,7 +358,7 @@ export function Settings() {
 
         {/* General Settings */}
         <TabsContent value="general" className="space-y-4 sm:space-y-6">
-          <Card className="bg-card border border-border/50 p-8 sm:p-10 rounded-[2.5rem] shadow-sm">
+          <Card className="bg-card border border-border/50 p-6 md:p-10 rounded-3xl md:rounded-[2.5rem] shadow-sm">
             <CardHeader className="p-0 mb-10">
               <div className="flex items-center gap-3 mb-2">
                 <div className="w-10 h-10 rounded-2xl bg-indigo-50 flex items-center justify-center">

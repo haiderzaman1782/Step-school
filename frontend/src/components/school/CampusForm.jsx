@@ -28,8 +28,8 @@ export default function CampusForm({ onClose, onSuccess }) {
 
     return (
         <div className="fixed inset-0 bg-background/80 backdrop-blur-xl z-[100] flex items-center justify-center p-4 animate-in fade-in duration-300">
-            <div className="bg-card border border-border shadow-2xl rounded-[3rem] w-full max-w-lg overflow-hidden animate-in zoom-in-95 duration-300">
-                <div className="relative p-8 md:p-12">
+            <div className="bg-card border border-border shadow-2xl rounded-3xl md:rounded-[3rem] w-full max-w-lg overflow-hidden animate-in zoom-in-95 duration-300">
+                <div className="relative p-6 md:p-12">
                     <button
                         onClick={onClose}
                         className="absolute right-8 top-8 p-2 hover:bg-muted rounded-full transition-colors"

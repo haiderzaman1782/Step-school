@@ -68,8 +68,8 @@ export default function GenerateVoucherModal({ onClose, onSuccess, initialClient
 
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-primary/20 backdrop-blur-md animate-in fade-in duration-300">
-            <div className="bg-card w-full max-w-lg rounded-[2.5rem] shadow-2xl border border-border/50 overflow-hidden animate-in zoom-in-95 self-center">
-                <div className="p-8 pb-4 flex items-center justify-between border-b border-border/10">
+            <div className="bg-card w-full max-w-lg rounded-3xl md:rounded-[2.5rem] shadow-2xl border border-border/50 overflow-hidden animate-in zoom-in-95 self-center">
+                <div className="p-6 md:p-8 md:pb-4 flex items-center justify-between border-b border-border/10">
                     <div className="flex items-center gap-3">
                         <div className="w-10 h-10 rounded-2xl bg-indigo-50 flex items-center justify-center">
                             <Receipt className="w-5 h-5 text-indigo-600" />
@@ -81,7 +81,7 @@ export default function GenerateVoucherModal({ onClose, onSuccess, initialClient
                     </button>
                 </div>
 
-                <form onSubmit={handleSubmit} className="p-8 space-y-6">
+                <form onSubmit={handleSubmit} className="p-6 md:p-8 space-y-6">
                     <div className="space-y-2">
                         <label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/60 ml-1">Target Institution</label>
                         <div className="relative">

@@ -9,6 +9,9 @@ import {
 import {
     getAllCampuses, createCampus, deleteCampus
 } from '../controllers/campusesController.js';
+import {
+    getAccountantMetrics, getClientMetrics
+} from '../controllers/dashboardController.js';
 import jwt from 'jsonwebtoken';
 
 const router = express.Router();
@@ -61,6 +64,10 @@ router.put('/vouchers/:voucherId/payment', auth, roles('accountant', 'owner'), e
 router.delete('/vouchers/:id', auth, roles('accountant', 'owner'), deleteVoucher);
 router.patch('/vouchers/:id/cancel', auth, roles('accountant', 'owner'), cancelVoucher);
 router.get('/vouchers/:id/pdf', auth, downloadPDF);
+
+// Dashboard
+router.get('/dashboard/metrics', auth, getAccountantMetrics);
+router.get('/dashboard/client-metrics', auth, getClientMetrics);
 
 // Legacy/Aliases (redirect or remove)
 // No longer using separate programs or fee-payments routes

@@ -99,25 +99,25 @@ export default function ClientDetail({ clientId, onBack, isClientView = false })
 
             {/* Summary Cards */}
             <div className="summary-grid grid grid-cols-1 md:grid-cols-3 gap-6 mb-10">
-                <div className="card p-6 bg-card border border-border rounded-2xl shadow-sm hover:shadow-md transition-shadow">
-                    <Users className="w-8 h-8 text-primary mb-4" />
+                <div className="card p-5 md:p-6 bg-card border border-border rounded-2xl shadow-sm hover:shadow-md transition-shadow">
+                    <Users className="w-6 h-6 md:w-8 md:h-8 text-primary mb-4" />
                     <div>
                         <p className="text-sm font-medium text-muted-foreground">Total Enrolled Seats</p>
-                        <p className="text-3xl font-bold">{client.total_seats}</p>
+                        <p className="text-2xl md:text-3xl font-bold">{client.total_seats}</p>
                     </div>
                 </div>
-                <div className="card p-6 bg-card border border-border rounded-2xl shadow-sm hover:shadow-md transition-shadow">
-                    <DollarSign className="w-8 h-8 text-success mb-4" />
+                <div className="card p-5 md:p-6 bg-card border border-border rounded-2xl shadow-sm hover:shadow-md transition-shadow">
+                    <DollarSign className="w-6 h-6 md:w-8 md:h-8 text-success mb-4" />
                     <div>
                         <p className="text-sm font-medium text-muted-foreground">Total Contract Value</p>
-                        <p className="text-3xl font-bold">{formatPkr(client.total_amount)}</p>
+                        <p className="text-2xl md:text-3xl font-bold">{formatPkr(client.total_amount)}</p>
                     </div>
                 </div>
-                <div className="card p-6 bg-card border border-border rounded-2xl shadow-sm hover:shadow-md transition-shadow">
-                    <Receipt className="w-8 h-8 text-destructive mb-4" />
+                <div className="card p-5 md:p-6 bg-card border border-border rounded-2xl shadow-sm hover:shadow-md transition-shadow">
+                    <Receipt className="w-6 h-6 md:w-8 md:h-8 text-destructive mb-4" />
                     <div>
                         <p className="text-sm font-medium text-muted-foreground">Outstanding Balance</p>
-                        <p className="text-3xl font-bold text-destructive">
+                        <p className="text-2xl md:text-3xl font-bold text-destructive">
                             {formatPkr(client.total_amount - client.payment_history.reduce((sum, p) => sum + parseFloat(p.amount_paid), 0))}
                         </p>
                     </div>
