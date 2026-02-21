@@ -1,10 +1,9 @@
-import React from 'react';
-import { Eye, ExternalLink, MapPin, Users, Trash2 } from 'lucide-react';
+import { Eye, ExternalLink, MapPin, Users, Trash2, Pencil } from 'lucide-react';
 
 const formatPkr = (n) =>
     parseFloat(n || 0).toLocaleString('en-PK', { style: 'currency', currency: 'PKR', maximumFractionDigits: 0 });
 
-const ClientRow = ({ client, onSelect, onDelete }) => {
+const ClientRow = ({ client, onSelect, onDelete, onEdit }) => {
     return (
         <tr className="group hover:bg-muted/10 transition-colors cursor-pointer" onClick={onSelect}>
             <td className="px-8 py-5">
@@ -35,6 +34,13 @@ const ClientRow = ({ client, onSelect, onDelete }) => {
             </td>
             <td className="px-8 py-5 text-right pr-12">
                 <div className="flex items-center justify-end gap-2">
+                    <button
+                        onClick={(e) => { e.stopPropagation(); onEdit(); }}
+                        className="p-2 rounded-xl text-muted-foreground hover:bg-primary/10 hover:text-primary transition-all"
+                        title="Edit Client"
+                    >
+                        <Pencil className="w-4 h-4" />
+                    </button>
                     <button
                         onClick={(e) => { e.stopPropagation(); onSelect(); }}
                         className="p-2 rounded-xl text-muted-foreground hover:bg-primary/10 hover:text-primary transition-all"

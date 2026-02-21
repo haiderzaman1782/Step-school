@@ -36,6 +36,7 @@ function DashboardContent() {
   // Client sub-section state
   const [selectedClientId, setSelectedClientId] = useState(null);
   const [showClientForm, setShowClientForm] = useState(false);
+  const [editingClient, setEditingClient] = useState(null);
 
   useEffect(() => {
     const user = authService.getCurrentUser();
@@ -87,6 +88,7 @@ function DashboardContent() {
     if (currentUser?.role !== 'client') {
       setSelectedClientId(null);
       setShowClientForm(false);
+      setEditingClient(null);
     }
     setActiveSection(section);
   };
@@ -205,15 +207,20 @@ function DashboardContent() {
                     clientId={currentUser.client_id}
                     isClientView={true}
                   />
-                ) : showClientForm ? (
+                ) : showClientForm || editingClient ? (
                   <ClientForm
+                    client={editingClient}
                     onSuccess={() => {
-                      toast.success('School client registered!');
+                      toast.success(editingClient ? 'School client updated!' : 'School client registered!');
                       setShowClientForm(false);
+                      setEditingClient(null);
                       setRefreshKey(k => k + 1);
                       loadMetrics(currentUser?.role);
                     }}
-                    onCancel={() => setShowClientForm(false)}
+                    onCancel={() => {
+                      setShowClientForm(false);
+                      setEditingClient(null);
+                    }}
                   />
                 ) : selectedClientId ? (
                   <ClientDetail
@@ -224,8 +231,14 @@ function DashboardContent() {
                 ) : (
                   <ClientList
                     key={refreshKey}
-                    onAdd={() => setShowClientForm(true)}
+                    onAdd={() => {
+                      setEditingClient(null);
+                      setShowClientForm(true);
+                    }}
                     onSelect={(id) => setSelectedClientId(id)}
+                    onEdit={(client) => {
+                      setEditingClient(client);
+                    }}
                   />
                 )}
               </div>

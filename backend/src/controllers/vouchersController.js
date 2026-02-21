@@ -54,7 +54,7 @@ export const getVoucherById = async (req, res) => {
 
 export const generateVoucher = async (req, res) => {
     try {
-        const { client_id, payment_plan_id, due_date } = req.body;
+        const { client_id, payment_plan_id, due_date, amount } = req.body;
 
         const client = await Client.findById(client_id);
         if (!client) return res.status(404).json({ error: 'Client not found' });
@@ -73,7 +73,7 @@ export const generateVoucher = async (req, res) => {
             client_id,
             campus_id: client.campus_id,
             payment_plan_id,
-            amount: milestone.amount,
+            amount: amount || milestone.amount,
             due_date: due_date || milestone.due_date,
             generated_by_accountant_name: req.user.name
         });

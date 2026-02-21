@@ -2,29 +2,29 @@ import pool from '../config/database.js';
 
 export const Client = {
     findAll: async ({ campus_id, client_id, search = '', limit = 10, offset = 0 }) => {
-        let baseQuery = ' FROM clients WHERE 1=1';
+        let baseQuery = ' FROM clients c LEFT JOIN users u ON u.client_id = c.id AND u.role = \'client\' WHERE 1=1';
         const params = [];
 
         if (campus_id) {
             params.push(campus_id);
-            baseQuery += ` AND campus_id = $${params.length}`;
+            baseQuery += ` AND c.campus_id = $${params.length}`;
         }
 
         if (client_id) {
             params.push(client_id);
-            baseQuery += ` AND id = $${params.length}`;
+            baseQuery += ` AND c.id = $${params.length}`;
         }
 
         if (search) {
             params.push(`%${search}%`);
-            baseQuery += ` AND (name ILIKE $${params.length} OR city ILIKE $${params.length})`;
+            baseQuery += ` AND (c.name ILIKE $${params.length} OR c.city ILIKE $${params.length} OR u.email ILIKE $${params.length})`;
         }
 
         const countResult = await pool.query('SELECT COUNT(*)' + baseQuery, params);
 
         const query = `
-      SELECT * ${baseQuery}
-      ORDER BY created_at DESC
+      SELECT c.*, u.email ${baseQuery}
+      ORDER BY c.created_at DESC
       LIMIT $${params.length + 1} OFFSET $${params.length + 2}
     `;
         params.push(limit, offset);
@@ -42,14 +42,20 @@ export const Client = {
     },
 
     findById: async (id) => {
-        // Get client with programs, payment plan and payment history (from vouchers)
-        const clientRes = await pool.query('SELECT * FROM clients WHERE id = $1', [id]);
+        // Get client with email, programs, payment plan and payment history
+        const clientRes = await pool.query(`
+            SELECT c.*, u.email 
+            FROM clients c 
+            LEFT JOIN users u ON u.client_id = c.id AND u.role = 'client'
+            WHERE c.id = $1
+        `, [id]);
         const client = clientRes.rows[0];
 
         if (!client) return null;
 
         const programs = await pool.query('SELECT * FROM programs WHERE client_id = $1', [id]);
         const paymentPlan = await pool.query('SELECT * FROM payment_plans WHERE client_id = $1 ORDER BY display_order', [id]);
+        // ... (rest of method unchanged)
 
         // Derived payment history from vouchers (paid or partial)
         const paymentHistory = await pool.query(`
@@ -63,13 +69,12 @@ export const Client = {
       ORDER BY COALESCE(v.paid_date, v.updated_at) DESC
     `, [id]);
 
-        // All milestone-linked vouchers (including pending) for milestone display
+        // All vouchers (including manual) for milestone display
         const milestoneVouchers = await pool.query(`
       SELECT v.id, v.voucher_number, v.amount, v.amount_paid, v.balance,
              v.status, v.payment_plan_id
       FROM vouchers v
       WHERE v.client_id = $1
-        AND v.payment_plan_id IS NOT NULL
         AND v.status != 'cancelled'
       ORDER BY v.created_at DESC
     `, [id]);
@@ -99,8 +104,13 @@ export const Client = {
         const params = [];
         let i = 1;
 
+        const ignoredFields = [
+            'id', 'total_seats', 'total_amount', 'programs',
+            'payment_plan', 'admin_email', 'milestone_vouchers', 'payment_history'
+        ];
+
         Object.entries(data).forEach(([key, value]) => {
-            if (key !== 'id' && key !== 'total_seats' && key !== 'total_amount') {
+            if (!ignoredFields.includes(key)) {
                 fields.push(`${key} = $${i++}`);
                 params.push(value);
             }
@@ -115,7 +125,23 @@ export const Client = {
     },
 
     delete: async (id) => {
-        const result = await pool.query('DELETE FROM clients WHERE id = $1 RETURNING id', [id]);
-        return result.rows[0];
+        const client_db = await pool.connect();
+        try {
+            await client_db.query('BEGIN');
+
+            // 1. Delete associated users
+            await client_db.query('DELETE FROM users WHERE client_id = $1', [id]);
+
+            // 2. Delete the client (other tables like programs, payment_plans, vouchers have ON DELETE CASCADE)
+            const result = await client_db.query('DELETE FROM clients WHERE id = $1 RETURNING id', [id]);
+
+            await client_db.query('COMMIT');
+            return result.rows[0];
+        } catch (error) {
+            await client_db.query('ROLLBACK');
+            throw error;
+        } finally {
+            client_db.release();
+        }
     }
 };

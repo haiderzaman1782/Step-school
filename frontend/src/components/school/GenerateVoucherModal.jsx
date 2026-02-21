@@ -11,15 +11,16 @@ const VOUCHER_TYPES = [
     { value: 'roll_number_slip', label: 'Roll Number Slip' },
 ];
 
-export default function GenerateVoucherModal({ onClose, onSuccess, initialClientId }) {
+export default function GenerateVoucherModal({ onClose, onSuccess, initialClientId, prefill }) {
     const [clients, setClients] = useState([]);
     const [loading, setLoading] = useState(false);
     const [fetchingClients, setFetchingClients] = useState(true);
     const [formData, setFormData] = useState({
         client_id: initialClientId || '',
-        payment_type: 'advance',
-        amount: '',
-        due_date: new Date().toISOString().split('T')[0],
+        payment_type: prefill?.payment_type || 'advance',
+        payment_plan_id: prefill?.payment_plan_id || null,
+        amount: prefill?.amount || '',
+        due_date: prefill?.due_date || new Date().toISOString().split('T')[0],
         amount_paid: '',
         payment_method: 'Bank Transfer',
         notes: ''
@@ -44,19 +45,26 @@ export default function GenerateVoucherModal({ onClose, onSuccess, initialClient
         e.preventDefault();
         setLoading(true);
         try {
-            // In our system, "manual" generation still needs to resolve to a milestone or custom name.
-            // For now, we'll send it to the existing generateVoucher or a specialized creating endpoint.
-            // Since our backend generateVoucher expects payment_plan_id, we'll need to adapt it.
-
-            await vouchersService.createManual({
-                client_id: formData.client_id,
-                amount: parseFloat(formData.amount),
-                type: formData.payment_type,
-                due_date: formData.due_date,
-                amount_paid: formData.amount_paid ? parseFloat(formData.amount_paid) : 0,
-                payment_method: formData.payment_method,
-                notes: formData.notes
-            });
+            if (formData.payment_plan_id) {
+                // Milestone-linked generation with potentially edited amount/due_date
+                await vouchersService.generate({
+                    client_id: formData.client_id,
+                    payment_plan_id: formData.payment_plan_id,
+                    amount: parseFloat(formData.amount),
+                    due_date: formData.due_date
+                });
+            } else {
+                // Pure manual creation
+                await vouchersService.createManual({
+                    client_id: formData.client_id,
+                    amount: parseFloat(formData.amount),
+                    type: formData.payment_type,
+                    due_date: formData.due_date,
+                    amount_paid: formData.amount_paid ? parseFloat(formData.amount_paid) : 0,
+                    payment_method: formData.payment_method,
+                    notes: formData.notes
+                });
+            }
 
             onSuccess();
         } catch (error) {

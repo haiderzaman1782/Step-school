@@ -12,7 +12,7 @@ const STANDARD_MILESTONES = [
     { payment_type: 'roll_number_slip', label: 'Roll Number Slip', ratio: 0.25 },
 ];
 
-export default function ClientForm({ onSuccess, onCancel }) {
+export default function ClientForm({ onSuccess, onCancel, client }) {
     const [formData, setFormData] = useState({
         name: '',
         director_name: '',
@@ -46,7 +46,26 @@ export default function ClientForm({ onSuccess, onCancel }) {
         if (user?.role === 'owner') {
             loadCampuses();
         }
-    }, []);
+
+        // If editing
+        if (client) {
+            setFormData({
+                name: client.name || '',
+                director_name: client.director_name || '',
+                admin_email: client.email || '', // In the model it's email, in form it's admin_email
+                city: client.city || '',
+                seat_cost: client.seat_cost || 30000,
+                campus_id: client.campus_id || ''
+            });
+
+            if (client.programs && client.programs.length > 0) {
+                setPrograms(client.programs.map(p => ({
+                    program_name: p.program_name,
+                    seat_count: p.seat_count
+                })));
+            }
+        }
+    }, [client]);
 
     const loadCampuses = async () => {
         try {
@@ -82,7 +101,11 @@ export default function ClientForm({ onSuccess, onCancel }) {
                 return;
             }
 
-            await clientsService.create(payload);
+            if (client) {
+                await clientsService.update(client.id, payload);
+            } else {
+                await clientsService.create(payload);
+            }
             onSuccess();
         } catch (e) {
             setError(e.response?.data?.error || e.message);

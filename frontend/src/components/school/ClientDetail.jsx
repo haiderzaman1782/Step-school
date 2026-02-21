@@ -29,6 +29,7 @@ export default function ClientDetail({ clientId, onBack, isClientView = false })
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
     const [showVoucherModal, setShowVoucherModal] = useState(false);
+    const [milestoneToPrefill, setMilestoneToPrefill] = useState(null);
 
     const load = async () => {
         setLoading(true);
@@ -44,17 +45,14 @@ export default function ClientDetail({ clientId, onBack, isClientView = false })
 
     useEffect(() => { load(); }, [clientId]);
 
-    const handleGenerateVoucher = async (milestoneId) => {
-        try {
-            const v = await vouchersService.generate({
-                client_id: clientId,
-                payment_plan_id: milestoneId
-            });
-            alert(`Voucher ${v.voucher_number} generated successfully!`);
-            load();
-        } catch (e) {
-            alert(e.response?.data?.error || e.message);
-        }
+    const handleGenerateVoucher = (milestone) => {
+        setMilestoneToPrefill({
+            payment_plan_id: milestone.id,
+            payment_type: milestone.payment_type,
+            amount: milestone.amount,
+            due_date: milestone.due_date ? new Date(milestone.due_date).toISOString().split('T')[0] : new Date().toISOString().split('T')[0]
+        });
+        setShowVoucherModal(true);
     };
 
     if (loading) return (
@@ -194,7 +192,7 @@ export default function ClientDetail({ clientId, onBack, isClientView = false })
                                         ) : !isClientView ? (
                                             <button
                                                 className="bg-primary hover:bg-primary/90 text-primary-foreground text-xs font-bold py-2 px-4 rounded-lg shadow-sm transition-all"
-                                                onClick={() => handleGenerateVoucher(m.id)}
+                                                onClick={() => handleGenerateVoucher(m)}
                                             >
                                                 Generate Voucher
                                             </button>
@@ -205,6 +203,30 @@ export default function ClientDetail({ clientId, onBack, isClientView = false })
                                 </div>
                             );
                         })}
+
+                        {/* Manual Vouchers Section */}
+                        {client.milestone_vouchers?.some(v => !v.payment_plan_id) && (
+                            <div className="pt-4 mt-4 border-t border-border/10">
+                                <h4 className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/60 mb-3 px-1">Other Issued Vouchers</h4>
+                                <div className="space-y-3">
+                                    {client.milestone_vouchers.filter(v => !v.payment_plan_id).map(v => (
+                                        <div key={v.id} className="flex items-center justify-between p-3 rounded-xl bg-muted/20 border border-border/10">
+                                            <div className="flex flex-col gap-0.5">
+                                                <span className="text-[10px] font-black uppercase text-muted-foreground/80 tracking-wide">Manual / Unallocated</span>
+                                                <span className="text-sm font-bold">{formatPkr(v.amount)}</span>
+                                                <span className="text-[10px] font-mono opacity-60">#{v.voucher_number} • {v.status.toUpperCase()}</span>
+                                            </div>
+                                            <div className="flex flex-col items-end gap-1">
+                                                <span className={`text-[9px] font-bold px-2 py-0.5 rounded-full ${v.status === 'paid' ? 'bg-success/10 text-success' : 'bg-indigo-50 text-indigo-600'}`}>
+                                                    {v.status.toUpperCase()}
+                                                </span>
+                                                {v.amount_paid > 0 && <span className="text-[10px] font-bold text-success">Paid: {formatPkr(v.amount_paid)}</span>}
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
                     </div>
                 </section>
 
@@ -254,8 +276,16 @@ export default function ClientDetail({ clientId, onBack, isClientView = false })
             {showVoucherModal && (
                 <GenerateVoucherModal
                     initialClientId={clientId}
-                    onClose={() => setShowVoucherModal(false)}
-                    onSuccess={() => { setShowVoucherModal(false); load(); }}
+                    prefill={milestoneToPrefill}
+                    onClose={() => {
+                        setShowVoucherModal(false);
+                        setMilestoneToPrefill(null);
+                    }}
+                    onSuccess={() => {
+                        setShowVoucherModal(false);
+                        setMilestoneToPrefill(null);
+                        load();
+                    }}
                 />
             )}
         </div>

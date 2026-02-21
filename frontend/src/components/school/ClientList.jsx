@@ -4,7 +4,7 @@ import { clientsService } from '../../app/services/clientsService.js';
 import ClientRow from './ClientRow.jsx';
 import { Users, Search, Plus, Sparkles, Trash2 } from 'lucide-react';
 
-export default function ClientList({ onAdd, onSelect }) {
+export default function ClientList({ onAdd, onSelect, onEdit }) {
     const [clients, setClients] = useState([]);
     const [total, setTotal] = useState(0);
     const [loading, setLoading] = useState(true);
@@ -62,18 +62,20 @@ export default function ClientList({ onAdd, onSelect }) {
             </div>
 
             <div className="bg-card border border-border/50 p-1.5 md:p-2 rounded-2xl md:rounded-[2rem] shadow-sm flex flex-col md:flex-row items-center gap-2">
-                <form onSubmit={handleSearch} className="relative flex-1 w-full">
-                    <Search className="absolute left-6 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground/50" />
-                    <input
-                        value={search}
-                        onChange={(e) => setSearch(e.target.value)}
-                        placeholder="Search by school name, director, or city..."
-                        className="w-full pl-14 pr-6 py-4 bg-transparent border-none focus:ring-0 text-foreground placeholder:text-muted-foreground/40 font-medium"
-                    />
+                <form onSubmit={handleSearch} className="flex-1 w-full flex flex-col md:flex-row items-center gap-2">
+                    <div className="relative flex-1 w-full">
+                        <Search className="absolute left-6 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground/50" />
+                        <input
+                            value={search}
+                            onChange={(e) => setSearch(e.target.value)}
+                            placeholder="Search by school name, director, or city..."
+                            className="w-full pl-14 pr-6 py-4 bg-transparent border-none focus:ring-0 text-foreground placeholder:text-muted-foreground/40 font-medium"
+                        />
+                    </div>
+                    <button type="submit" className="w-full md:w-auto px-8 py-3 bg-secondary text-secondary-foreground rounded-xl font-bold hover:bg-secondary/80 transition-colors">
+                        Search
+                    </button>
                 </form>
-                <button type="submit" className="w-full md:w-auto px-8 py-3 bg-secondary text-secondary-foreground rounded-xl font-bold hover:bg-secondary/80 transition-colors">
-                    Search
-                </button>
             </div>
 
             {error && <div className="p-4 bg-destructive/10 text-destructive rounded-2xl text-sm font-bold border border-destructive/20">{error}</div>}
@@ -104,6 +106,7 @@ export default function ClientList({ onAdd, onSelect }) {
                                             client={c}
                                             onSelect={() => onSelect(c.id)}
                                             onDelete={() => handleDelete(c.id)}
+                                            onEdit={() => onEdit(c)}
                                         />
                                     ))}
                                     {clients.length === 0 && (

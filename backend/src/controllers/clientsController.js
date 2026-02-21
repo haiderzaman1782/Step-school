@@ -4,8 +4,8 @@ import bcrypt from 'bcryptjs';
 
 export const getAllClients = async (req, res) => {
     try {
-        const { page = 1, limit = 10, search = '', campus_id } = req.query;
-        const offset = (page - 1) * limit;
+        const { page = 1, limit = 10, search = '', campus_id, offset: queryOffset } = req.query;
+        const offset = queryOffset !== undefined ? parseInt(queryOffset) : (page - 1) * limit;
 
         // Campus isolation
         let targetCampusId = campus_id;
@@ -123,18 +123,72 @@ export const createClient = async (req, res) => {
 };
 
 export const updateClient = async (req, res) => {
+    const client_db = await pool.connect();
     try {
-        const client = await Client.findById(req.params.id);
+        const { id } = req.params;
+        const { name, city, seat_cost, director_name, admin_email, programs, payment_plan } = req.body;
+
+        const client = await Client.findById(id);
         if (!client) return res.status(404).json({ error: 'Client not found' });
 
         if (req.user.role === 'accountant' && client.campus_id !== req.user.campus_id) {
             return res.status(403).json({ error: 'Access denied' });
         }
 
-        const updated = await Client.update(req.params.id, req.body);
+        await client_db.query('BEGIN');
+
+        // 1. Update basic info
+        const updated = await Client.update(id, req.body);
+
+        // 2. Update programs (Delete and re-insert for simplicity)
+        if (programs !== undefined) {
+            await client_db.query('DELETE FROM programs WHERE client_id = $1', [id]);
+            if (programs.length > 0) {
+                for (const prog of programs) {
+                    await client_db.query(
+                        'INSERT INTO programs (client_id, program_name, seat_count) VALUES ($1, $2, $3)',
+                        [id, prog.program_name, prog.seat_count]
+                    );
+                }
+            }
+        }
+
+        // 3. Update payment plan (Only if provided)
+        if (payment_plan !== undefined) {
+            // Note: We don't delete if there are already linked vouchers (best practice)
+            // But for this simple implementation, if the user edits the plan, 
+            // we'll update milestones that don't have vouchers or just sync.
+            // Simplified approach: Delete and re-insert milestones without Vouchers
+            // Or just update existing ones. Let's do a simple re-sync for now.
+            await client_db.query('DELETE FROM payment_plans WHERE client_id = $1', [id]);
+            for (let i = 0; i < payment_plan.length; i++) {
+                const p = payment_plan[i];
+                await client_db.query(
+                    'INSERT INTO payment_plans (client_id, payment_type, amount, due_date, display_order) VALUES ($1, $2, $3, $4, $5)',
+                    [id, p.payment_type, p.amount, p.due_date, i]
+                );
+            }
+        }
+
+        // 4. Update associated user
+        if (admin_email || director_name) {
+            await client_db.query(
+                `UPDATE users 
+                 SET email = COALESCE($1, email), 
+                     full_name = COALESCE($2, full_name)
+                 WHERE client_id = $3 AND role = 'client'`,
+                [admin_email?.toLowerCase() || null, director_name || null, id]
+            );
+        }
+
+        await client_db.query('COMMIT');
         res.json(updated);
     } catch (error) {
-        res.status(500).json({ error: 'Update failed' });
+        await client_db.query('ROLLBACK');
+        console.error('UpdateClient error:', error);
+        res.status(500).json({ error: 'Update failed: ' + (error.message || '') });
+    } finally {
+        client_db.release();
     }
 };
 
@@ -150,6 +204,7 @@ export const deleteClient = async (req, res) => {
         await Client.delete(req.params.id);
         res.json({ message: 'Client deleted' });
     } catch (error) {
-        res.status(500).json({ error: 'Delete failed' });
+        console.error('DeleteClient error:', error);
+        res.status(500).json({ error: error.message || 'Delete failed' });
     }
 };
