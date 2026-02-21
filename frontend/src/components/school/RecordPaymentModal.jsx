@@ -47,8 +47,8 @@ export default function RecordPaymentModal({ voucher, onClose, onSuccess }) {
     };
 
     return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-primary/20 backdrop-blur-md animate-in fade-in duration-300">
-            <div className="bg-card w-full max-w-lg rounded-[2.5rem] shadow-2xl border border-border/50 overflow-hidden animate-in zoom-in-95 self-center">
+        <div className="fixed inset-0 z-50 flex items-start md:items-center justify-center p-4 pt-6 bg-primary/20 backdrop-blur-md animate-in fade-in duration-300 overflow-y-auto">
+            <div className="bg-card w-full max-w-lg rounded-[2.5rem] shadow-2xl border border-border/50 overflow-hidden animate-in zoom-in-95 my-auto">
                 <div className="p-8 pb-4 flex items-center justify-between border-b border-border/10">
                     <div className="flex items-center gap-3">
                         <div className="w-10 h-10 rounded-2xl bg-emerald-50 flex items-center justify-center">

@@ -93,8 +93,9 @@ export default function SchoolVoucherList({ clientId, isClientView = false }) {
     return (
         <div className="voucher-list-container space-y-8 animate-in fade-in duration-700">
             {/* Filters Bar */}
-            <div className="bg-card border border-border/50 p-2 rounded-[2rem] shadow-sm flex flex-col lg:flex-row items-center gap-2">
-                <form onSubmit={handleSearch} className="relative flex-1 w-full">
+            <div className="bg-card border border-border/50 p-2 rounded-[2rem] shadow-sm flex flex-col items-start gap-5">
+                {/* Search input row */}
+                <form onSubmit={handleSearch} className="relative w-full">
                     <Search className="absolute left-6 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground/50" />
                     <input
                         value={search}
@@ -103,7 +104,8 @@ export default function SchoolVoucherList({ clientId, isClientView = false }) {
                         className="w-full pl-14 pr-6 py-4 bg-transparent border-none focus:ring-0 text-foreground placeholder:text-muted-foreground/40 font-medium"
                     />
                 </form>
-                <div className="flex items-center gap-2 w-full lg:w-auto p-1">
+                {/* Controls row — wraps on mobile */}
+                <div className="flex flex-wrap items-between gap-2 px-1 pb-1">
                     <select
                         value={status}
                         onChange={(e) => { setStatus(e.target.value); setOffset(0); load(search, e.target.value, 0); }}
@@ -114,19 +116,20 @@ export default function SchoolVoucherList({ clientId, isClientView = false }) {
                         <option value="partial">Partial</option>
                         <option value="paid">Settled</option>
                     </select>
-                    <button type="submit" className="px-8 py-3 bg-primary text-primary-foreground rounded-xl font-bold hover:bg-primary/90 transition-colors shadow-sm">
+                    <button
+                        type="submit"
+                        onClick={handleSearch}
+                        className="px-8 py-3 bg-primary text-primary-foreground rounded-xl font-bold hover:bg-primary/90 transition-colors shadow-sm"
+                    >
                         Search
                     </button>
                     {!isClientView && (
-                        <>
-                            <div className="w-px h-8 bg-border/50 mx-2 hidden lg:block" />
-                            <button
-                                onClick={() => setShowManualModal(true)}
-                                className="flex items-center gap-2 px-6 py-3 bg-indigo-50 text-indigo-700 rounded-xl font-black uppercase tracking-widest text-[10px] hover:bg-indigo-100 transition-all shadow-sm border border-indigo-100"
-                            >
-                                <Plus className="w-4 h-4" /> Issue Voucher
-                            </button>
-                        </>
+                        <button
+                            onClick={() => setShowManualModal(true)}
+                            className="flex items-center gap-2 px-5 py-3 bg-indigo-50 text-indigo-700 rounded-xl font-black uppercase tracking-widest text-[10px] hover:bg-indigo-100 transition-all shadow-sm border border-indigo-100"
+                        >
+                            <Plus className="w-4 h-4" /> Issue Voucher
+                        </button>
                     )}
                 </div>
             </div>
@@ -155,7 +158,7 @@ export default function SchoolVoucherList({ clientId, isClientView = false }) {
                             <table className="w-full text-left border-collapse">
                                 <thead>
                                     <tr className="bg-muted/5 border-b border-border/20">
-                                        <th className="px-8 py-5 text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground">ID & Date</th>
+                                        <th colSpan={2} className="px-8 py-5 text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground min-w-[180px]">ID & Date</th>
                                         <th className="px-8 py-5 text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground">Institution</th>
                                         <th className="px-8 py-5 text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground">Description</th>
                                         <th className="px-8 py-5 text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground text-right">Debit</th>
@@ -168,9 +171,9 @@ export default function SchoolVoucherList({ clientId, isClientView = false }) {
                                 <tbody className="divide-y divide-border/20">
                                     {vouchers.map((v) => (
                                         <tr key={v.id} className="group hover:bg-muted/5 transition-colors">
-                                            <td className="px-8 py-5">
+                                            <td colSpan={2} className="px-8 py-5">
                                                 <div className="flex flex-col">
-                                                    <span className="text-sm font-bold text-foreground font-mono">{v.voucher_number}</span>
+                                                    <span className="text-sm font-bold text-foreground font-mono whitespace-nowrap">{v.voucher_number}</span>
                                                     <span className="text-[10px] text-muted-foreground/60 font-black uppercase">Issued {new Date(v.created_at).toLocaleDateString('en-PK')}</span>
                                                 </div>
                                             </td>

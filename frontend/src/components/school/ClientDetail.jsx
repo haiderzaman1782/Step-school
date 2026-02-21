@@ -73,22 +73,22 @@ export default function ClientDetail({ clientId, onBack, isClientView = false })
                         </button>
                     )}
                     <div className="header-info">
-                        <h1 className="text-4xl font-extrabold tracking-tight mb-1">{client.name}</h1>
-                        <div className="flex items-center gap-4 text-muted-foreground">
-                            <span className="flex items-center gap-1.5"><MapPin className="w-4 h-4" /> {client.city}</span>
-                            <span className="flex items-center gap-1.5 font-medium text-foreground/80"><Building2 className="w-4 h-4" /> Director: {client.director_name}</span>
+                        <h1 className="text-2xl md:text-4xl font-extrabold tracking-tight mb-1 break-words">{client.name}</h1>
+                        <div className="flex flex-wrap items-center gap-3 text-muted-foreground text-sm">
+                            <span className="flex items-center gap-1.5"><MapPin className="w-4 h-4 flex-shrink-0" /> {client.city}</span>
+                            <span className="flex items-center gap-1.5 font-medium text-foreground/80"><Building2 className="w-4 h-4 flex-shrink-0" /> Director: {client.director_name}</span>
                         </div>
                     </div>
                 </div>
 
                 {isClientView ? (
-                    <div className="bg-primary/5 border border-primary/10 px-4 py-2 rounded-lg">
+                    <div className="bg-primary/5 border border-primary/10 px-4 py-2 rounded-lg self-start md:self-auto">
                         <span className="text-xs font-bold text-primary uppercase tracking-widest">Your Private Portal</span>
                     </div>
                 ) : (
                     <button
                         onClick={() => setShowVoucherModal(true)}
-                        className="flex items-center gap-2 px-6 py-3 bg-indigo-50 text-indigo-700 rounded-xl font-black uppercase tracking-widest text-[10px] hover:bg-indigo-100 transition-all shadow-sm border border-indigo-100"
+                        className="flex items-center justify-center gap-2 w-full md:w-auto px-6 py-3 bg-indigo-50 text-indigo-700 rounded-xl font-black uppercase tracking-widest text-[10px] hover:bg-indigo-100 transition-all shadow-sm border border-indigo-100"
                     >
                         <FilePlus className="w-4 h-4" /> Issue Manual Voucher
                     </button>
