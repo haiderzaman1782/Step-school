@@ -25,7 +25,7 @@ export const Voucher = {
         const countResult = await pool.query('SELECT COUNT(*)' + baseQuery, params);
 
         const query = `
-      SELECT v.*, c.name as client_name, c.city as client_city
+      SELECT v.*, c.name as client_name, c.city as client_city, c.director_name as director_name
       ${baseQuery}
       ORDER BY v.created_at DESC
       LIMIT $${params.length + 1} OFFSET $${params.length + 2}
@@ -48,6 +48,7 @@ export const Voucher = {
         const query = `
       SELECT v.*, 
              c.name as client_name, c.city as client_city, c.campus_id as client_campus_id,
+             c.director_name as director_name,
              p.payment_type as milestone_name
       FROM vouchers v
       JOIN clients c ON v.client_id = c.id

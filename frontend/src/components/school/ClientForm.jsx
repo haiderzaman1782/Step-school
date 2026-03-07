@@ -3,7 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { clientsService } from '../../app/services/clientsService.js';
 import { campusesService } from '../../app/services/campusesService.js';
 import { authService } from '../../app/services/authService.js';
-import { Plus, Trash2, Save, X, Building2, MapPin, Calculator, ScrollText, Landmark } from 'lucide-react';
+import { Plus, Trash2, Save, X, Building2, MapPin, Calculator, ScrollText, Landmark, ToggleLeft, ToggleRight } from 'lucide-react';
 
 const STANDARD_MILESTONES = [
     { payment_type: 'advance', label: 'Initial Advance', ratio: 0.25 },
@@ -28,6 +28,7 @@ export default function ClientForm({ onSuccess, onCancel, client }) {
     const [currentUser, setCurrentUser] = useState(null);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
+    const [showContract, setShowContract] = useState(false);
 
     const totalSeats = programs.reduce((sum, p) => sum + (parseInt(p.seat_count) || 0), 0);
     const totalAmount = totalSeats * formData.seat_cost;
@@ -81,8 +82,8 @@ export default function ClientForm({ onSuccess, onCancel, client }) {
         setLoading(true);
         setError('');
 
-        if (totalSeats <= 0) {
-            setError('Total seats must be greater than 0');
+        if (showContract && totalSeats <= 0) {
+            setError('Total seats must be greater than 0 when contract is enabled');
             setLoading(false);
             return;
         }
@@ -90,8 +91,8 @@ export default function ClientForm({ onSuccess, onCancel, client }) {
         try {
             const payload = {
                 ...formData,
-                programs: programs.filter(p => p.program_name && p.seat_count > 0),
-                payment_plan: milestones
+                programs: showContract ? programs.filter(p => p.program_name && p.seat_count > 0) : [],
+                payment_plan: showContract ? milestones : []
             };
 
             // Explicitly ensure campus_id is there for owners
@@ -219,55 +220,76 @@ export default function ClientForm({ onSuccess, onCancel, client }) {
                     </div>
                 </div>
 
-                {/* Programs Section */}
-                <div className="bg-card border border-border/50 rounded-3xl md:rounded-[2.5rem] p-6 md:p-10 shadow-sm relative overflow-hidden">
-                    <div className="flex items-center justify-between mb-8">
-                        <div className="flex items-center gap-3">
-                            <div className="w-10 h-10 rounded-2xl bg-emerald-50 flex items-center justify-center">
-                                <Plus className="w-5 h-5 text-emerald-600" />
-                            </div>
-                            <h3 className="text-lg font-black uppercase tracking-widest text-muted-foreground/80">Program Enrollment</h3>
-                        </div>
-                        <button type="button" onClick={addProgram} className="flex items-center gap-2 px-4 py-2 bg-emerald-50 text-emerald-700 rounded-xl text-xs font-black uppercase tracking-widest hover:bg-emerald-100 transition-colors">
-                            <Plus className="w-4 h-4" /> Add Program
-                        </button>
+                {/* Contract Toggle */}
+                <div className="flex items-center justify-between bg-card border border-border/50 rounded-2xl px-6 py-4 shadow-sm">
+                    <div>
+                        <p className="text-sm font-black uppercase tracking-widest text-foreground">Program Enrollment & Contract</p>
+                        <p className="text-xs text-muted-foreground mt-0.5">Optional — add programs and financial milestones now or later</p>
                     </div>
-
-                    <div className="space-y-4">
-                        {programs.map((p, i) => (
-                            <div key={i} className="flex flex-col md:flex-row gap-4 items-end animate-in slide-in-from-left-2 duration-300">
-                                <div className="flex-1 space-y-2 w-full">
-                                    <label className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground/40 ml-1">Program Title</label>
-                                    <input
-                                        required
-                                        className="w-full px-6 py-3 bg-muted/5 border border-border/30 rounded-xl font-medium focus:border-primary/30 outline-none"
-                                        value={p.program_name}
-                                        onChange={(e) => updateProgram(i, 'program_name', e.target.value)}
-                                        placeholder="e.g. Matric Tech"
-                                    />
-                                </div>
-                                <div className="w-full md:w-32 space-y-2">
-                                    <label className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground/40 ml-1">Seats</label>
-                                    <input
-                                        type="number"
-                                        required
-                                        className="w-full px-6 py-3 bg-muted/5 border border-border/30 rounded-xl font-bold text-center focus:border-primary/30 outline-none"
-                                        value={p.seat_count}
-                                        onChange={(e) => updateProgram(i, 'seat_count', parseInt(e.target.value))}
-                                    />
-                                </div>
-                                {programs.length > 1 && (
-                                    <button type="button" onClick={() => removeProgram(i)} className="mb-0.5 p-3 rounded-xl text-destructive/40 hover:bg-destructive/10 hover:text-destructive transition-all">
-                                        <Trash2 className="w-5 h-5" />
-                                    </button>
-                                )}
-                            </div>
-                        ))}
-                    </div>
+                    <button
+                        type="button"
+                        onClick={() => setShowContract(v => !v)}
+                        className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-black uppercase tracking-widest transition-all ${
+                            showContract
+                                ? 'bg-emerald-50 text-emerald-700 hover:bg-emerald-100'
+                                : 'bg-muted/40 text-muted-foreground hover:bg-muted/60'
+                        }`}
+                    >
+                        {showContract ? <ToggleRight className="w-5 h-5" /> : <ToggleLeft className="w-5 h-5" />}
+                        {showContract ? 'Enabled' : 'Disabled'}
+                    </button>
                 </div>
 
-                {/* Contract Summary */}
-                <div className="bg-indigo-900 text-white rounded-3xl md:rounded-[2.5rem] p-6 md:p-10 shadow-xl relative overflow-hidden group">
+                {/* Programs Section - conditional */}
+                {showContract && (
+                    <div className="bg-card border border-border/50 rounded-3xl md:rounded-[2.5rem] p-6 md:p-10 shadow-sm relative overflow-hidden animate-in fade-in slide-in-from-top-2 duration-300">
+                        <div className="flex items-center justify-between mb-8">
+                            <div className="flex items-center gap-3">
+                                <div className="w-10 h-10 rounded-2xl bg-emerald-50 flex items-center justify-center">
+                                    <Plus className="w-5 h-5 text-emerald-600" />
+                                </div>
+                                <h3 className="text-lg font-black uppercase tracking-widest text-muted-foreground/80">Program Enrollment</h3>
+                            </div>
+                            <button type="button" onClick={addProgram} className="flex items-center gap-2 px-4 py-2 bg-emerald-50 text-emerald-700 rounded-xl text-xs font-black uppercase tracking-widest hover:bg-emerald-100 transition-colors">
+                                <Plus className="w-4 h-4" /> Add Program
+                            </button>
+                        </div>
+
+                        <div className="space-y-4">
+                            {programs.map((p, i) => (
+                                <div key={i} className="flex flex-col md:flex-row gap-4 items-end animate-in slide-in-from-left-2 duration-300">
+                                    <div className="flex-1 space-y-2 w-full">
+                                        <label className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground/40 ml-1">Program Title</label>
+                                        <input
+                                            className="w-full px-6 py-3 bg-muted/5 border border-border/30 rounded-xl font-medium focus:border-primary/30 outline-none"
+                                            value={p.program_name}
+                                            onChange={(e) => updateProgram(i, 'program_name', e.target.value)}
+                                            placeholder="e.g. Matric Tech"
+                                        />
+                                    </div>
+                                    <div className="w-full md:w-32 space-y-2">
+                                        <label className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground/40 ml-1">Seats</label>
+                                        <input
+                                            type="number"
+                                            className="w-full px-6 py-3 bg-muted/5 border border-border/30 rounded-xl font-bold text-center focus:border-primary/30 outline-none"
+                                            value={p.seat_count}
+                                            onChange={(e) => updateProgram(i, 'seat_count', parseInt(e.target.value))}
+                                        />
+                                    </div>
+                                    {programs.length > 1 && (
+                                        <button type="button" onClick={() => removeProgram(i)} className="mb-0.5 p-3 rounded-xl text-destructive/40 hover:bg-destructive/10 hover:text-destructive transition-all">
+                                            <Trash2 className="w-5 h-5" />
+                                        </button>
+                                    )}
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                )}
+
+                {/* Contract Summary - conditional */}
+                {showContract && (
+                <div className="bg-indigo-900 text-white rounded-3xl md:rounded-[2.5rem] p-6 md:p-10 shadow-xl relative overflow-hidden group animate-in fade-in slide-in-from-top-2 duration-300">
                     <div className="absolute top-0 right-0 p-8 opacity-10 group-hover:scale-110 transition-transform">
                         <Calculator className="w-32 h-32" />
                     </div>
@@ -277,7 +299,7 @@ export default function ClientForm({ onSuccess, onCancel, client }) {
                             <ScrollText className="w-4 h-4" /> Contractual Ledger Preview
                         </h3>
 
-                        <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-10">
+                        {/* <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-10">
                             {milestones.map((m, i) => (
                                 <div key={i} className="p-4 bg-white/5 rounded-2xl border border-white/10 hover:bg-white/10 transition-colors">
                                     <p className="text-[10px] font-black uppercase tracking-widest opacity-50 mb-1">{m.label}</p>
@@ -286,7 +308,7 @@ export default function ClientForm({ onSuccess, onCancel, client }) {
                                     </p>
                                 </div>
                             ))}
-                        </div>
+                        </div> */}
 
                         <div className="flex items-end justify-between border-t border-white/10 pt-8 mt-2">
                             <div>
@@ -302,6 +324,7 @@ export default function ClientForm({ onSuccess, onCancel, client }) {
                         </div>
                     </div>
                 </div>
+                )}
 
                 {error && <div className="p-4 bg-destructive/10 text-destructive rounded-2xl text-sm font-bold border border-destructive/20 animate-shake">{error}</div>}
 

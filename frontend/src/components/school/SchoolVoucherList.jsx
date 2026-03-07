@@ -3,6 +3,7 @@ import React, { useEffect, useState } from 'react';
 import { vouchersService } from '../../app/services/vouchersService.js';
 import RecordPaymentModal from './RecordPaymentModal.jsx';
 import GenerateVoucherModal from './GenerateVoucherModal.jsx';
+import VoucherDetailModal from './VoucherDetailModal.jsx';
 import {
     Receipt,
     Search,
@@ -11,7 +12,8 @@ import {
     ArrowLeft,
     ArrowRight,
     TrendingDown,
-    Trash2
+    Trash2,
+    Eye
 } from 'lucide-react';
 
 const STATUS_COLORS = {
@@ -40,6 +42,7 @@ export default function SchoolVoucherList({ clientId, isClientView = false }) {
     const [search, setSearch] = useState('');
     const [paymentModal, setPaymentModal] = useState(null);
     const [showManualModal, setShowManualModal] = useState(false);
+    const [detailModal, setDetailModal] = useState(null);
     const [offset, setOffset] = useState(0);
     const LIMIT = 20;
 
@@ -160,7 +163,7 @@ export default function SchoolVoucherList({ clientId, isClientView = false }) {
                                     <tr className="bg-muted/5 border-b border-border/20">
                                         <th colSpan={2} className="px-8 py-5 text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground min-w-[180px]">ID & Date</th>
                                         <th className="px-8 py-5 text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground">Institution</th>
-                                        <th className="px-8 py-5 text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground">Description</th>
+                                        {/* <th className="px-8 py-5 text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground">Description</th> */}
                                         <th className="px-8 py-5 text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground text-right">Debit</th>
                                         <th className="px-8 py-5 text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground text-right text-success/80">Credit</th>
                                         <th className="px-8 py-5 text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground text-right text-destructive">Balance</th>
@@ -170,7 +173,15 @@ export default function SchoolVoucherList({ clientId, isClientView = false }) {
                                 </thead>
                                 <tbody className="divide-y divide-border/20">
                                     {vouchers.map((v) => (
-                                        <tr key={v.id} className="group hover:bg-muted/5 transition-colors">
+                                        <tr
+                                            key={v.id}
+                                            className="group hover:bg-muted/5 transition-colors cursor-pointer"
+                                            onClick={(e) => {
+                                                // Don't open if clicking action buttons
+                                                if (e.target.closest('button')) return;
+                                                setDetailModal(v.id);
+                                            }}
+                                        >
                                             <td colSpan={2} className="px-8 py-5">
                                                 <div className="flex flex-col">
                                                     <span className="text-sm font-bold text-foreground font-mono whitespace-nowrap">{v.voucher_number}</span>
@@ -179,13 +190,16 @@ export default function SchoolVoucherList({ clientId, isClientView = false }) {
                                             </td>
                                             <td className="px-8 py-5">
                                                 <div className="flex flex-col">
-                                                    <span className="text-sm font-bold">{v.client_name}</span>
+                                                    {/* <span className="text-sm font-bold">{v.client_name}</span> */}
+                                                    {v.director_name && (
+                                                        <span className="text-[10px] text-primary/70 font-black uppercase tracking-wide">Dir. {v.director_name}</span>
+                                                    )}
                                                     <span className="text-[10px] text-muted-foreground/60 font-black uppercase">{v.client_city}</span>
                                                 </div>
                                             </td>
-                                            <td className="px-8 py-5">
+                                            {/* <td className="px-8 py-5">
                                                 <span className="text-xs font-medium text-muted-foreground">{PAYMENT_TYPE_LABELS[v.milestone_name] || v.milestone_name}</span>
-                                            </td>
+                                            </td> */}
                                             <td className="px-8 py-5 text-right">
                                                 <span className="text-sm font-bold text-foreground opacity-80">{formatPkr(v.amount)}</span>
                                             </td>
@@ -205,8 +219,15 @@ export default function SchoolVoucherList({ clientId, isClientView = false }) {
                                                     <div className="flex items-center gap-2">
                                                         <button
                                                             className="p-2 rounded-xl text-muted-foreground hover:bg-primary/10 hover:text-primary transition-all"
+                                                            title="View Detail"
+                                                            onClick={() => setDetailModal(v.id)}
+                                                        >
+                                                            <Eye className="w-4 h-4" />
+                                                        </button>
+                                                        <button
+                                                            className="p-2 rounded-xl text-muted-foreground hover:bg-primary/10 hover:text-primary transition-all"
                                                             title="Download Record"
-                                                            onClick={() => vouchersService.downloadPDF(v.id, v.voucher_number)}
+                                                            onClick={() => vouchersService.downloadPDF(v.id, v.voucher_number, v.director_name)}
                                                         >
                                                             <Download className="w-4 h-4" />
                                                         </button>
@@ -241,13 +262,22 @@ export default function SchoolVoucherList({ clientId, isClientView = false }) {
                                             )}
                                             {isClientView && (
                                                 <td className="px-8 py-5 pr-10">
-                                                    <button
-                                                        className="p-2 rounded-xl text-muted-foreground hover:bg-primary/10 hover:text-primary transition-all"
-                                                        title="Download Record"
-                                                        onClick={() => vouchersService.downloadPDF(v.id, v.voucher_number)}
-                                                    >
-                                                        <Download className="w-4 h-4" />
-                                                    </button>
+                                                    <div className="flex items-center gap-2">
+                                                        <button
+                                                            className="p-2 rounded-xl text-muted-foreground hover:bg-primary/10 hover:text-primary transition-all"
+                                                            title="View Detail"
+                                                            onClick={() => setDetailModal(v.id)}
+                                                        >
+                                                            <Eye className="w-4 h-4" />
+                                                        </button>
+                                                        <button
+                                                            className="p-2 rounded-xl text-muted-foreground hover:bg-primary/10 hover:text-primary transition-all"
+                                                            title="Download Record"
+                                                            onClick={() => vouchersService.downloadPDF(v.id, v.voucher_number)}
+                                                        >
+                                                            <Download className="w-4 h-4" />
+                                                        </button>
+                                                    </div>
                                                 </td>
                                             )}
                                         </tr>
@@ -295,6 +325,14 @@ export default function SchoolVoucherList({ clientId, isClientView = false }) {
                     initialClientId={clientId}
                     onClose={() => setShowManualModal(false)}
                     onSuccess={() => { setShowManualModal(false); load(); }}
+                />
+            )}
+
+            {detailModal && (
+                <VoucherDetailModal
+                    voucherId={detailModal}
+                    onClose={() => setDetailModal(null)}
+                    onRecordPayment={(v) => { setDetailModal(null); setPaymentModal(v); }}
                 />
             )}
         </div>

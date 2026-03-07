@@ -1,7 +1,7 @@
 'use client';
 import React, { useState } from 'react';
 import { vouchersService } from '../../app/services/vouchersService.js';
-import { X, Receipt, Wallet, Calendar, FileText, CheckCircle2 } from 'lucide-react';
+import { X, Receipt, Wallet, Calendar, FileText, CheckCircle2, FilePlus } from 'lucide-react';
 
 const formatPkr = (n) =>
     parseFloat(n || 0).toLocaleString('en-PK', { style: 'currency', currency: 'PKR', maximumFractionDigits: 0 });
@@ -13,6 +13,7 @@ export default function RecordPaymentModal({ voucher, onClose, onSuccess }) {
     const [notes, setNotes] = useState('');
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
+    const [newVoucher, setNewVoucher] = useState(null);
 
     const handleSubmit = async (e) => {
         e.preventDefault();
@@ -31,20 +32,90 @@ export default function RecordPaymentModal({ voucher, onClose, onSuccess }) {
             return;
         }
 
+        let success = false;
         try {
+            // 1. Record the payment on the existing voucher
             await vouchersService.recordPayment(voucher.id, {
                 amount_paid: parseFloat(amount),
                 payment_method: method,
                 payment_date: date,
                 notes
             });
-            onSuccess();
+
+            // 2. Generate a new voucher for this payment amount
+            const generated = await vouchersService.createManual({
+                client_id: voucher.client_id,
+                amount: parseFloat(amount),
+                amount_paid: parseFloat(amount),
+                payment_method: method,
+                due_date: date,
+                notes: notes || `Payment received against ${voucher.voucher_number}`,
+                type: voucher.milestone_name || null
+            });
+
+            success = true;
+            setNewVoucher(generated);
         } catch (e) {
             setError(e.response?.data?.error || e.message);
         } finally {
-            setLoading(false);
+            if (!success) setLoading(false);
         }
     };
+
+    // If a new voucher was generated, show a success screen
+    if (newVoucher) {
+        return (
+            <div className="fixed inset-0 z-50 flex items-start md:items-center justify-center p-4 pt-6 bg-primary/20 backdrop-blur-md animate-in fade-in duration-300 overflow-y-auto">
+                <div className="bg-card w-full max-w-lg rounded-[2.5rem] shadow-2xl border border-border/50 overflow-hidden animate-in zoom-in-95 my-auto">
+                    <div className="p-10 flex flex-col items-center gap-6 text-center">
+                        <div className="w-16 h-16 rounded-3xl bg-emerald-50 flex items-center justify-center">
+                            <CheckCircle2 className="w-8 h-8 text-emerald-600" />
+                        </div>
+                        <div>
+                            <h3 className="text-2xl font-black text-primary">Payment Secured!</h3>
+                            <p className="text-muted-foreground text-sm mt-1">A new voucher has been generated for this payment.</p>
+                        </div>
+                        <div className="w-full bg-muted/5 border border-border/30 rounded-2xl p-5 text-left space-y-2">
+                            <div className="flex justify-between">
+                                <span className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/60">New Voucher</span>
+                                <span className="text-sm font-bold font-mono text-primary">{newVoucher.voucher_number}</span>
+                            </div>
+                            <div className="flex justify-between">
+                                <span className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/60">Amount</span>
+                                <span className="text-sm font-bold text-emerald-600">{formatPkr(amount)}</span>
+                            </div>
+                            <div className="flex justify-between">
+                                <span className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/60">Institution</span>
+                                <span className="text-sm font-bold">{voucher.client_name}</span>
+                            </div>
+                            <div className="flex justify-between">
+                                <span className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/60">Channel</span>
+                                <span className="text-sm font-bold">{method}</span>
+                            </div>
+                            <div className="flex justify-between">
+                                <span className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/60">Date</span>
+                                <span className="text-sm font-bold">{date}</span>
+                            </div>
+                        </div>
+                        <div className="flex gap-3 w-full">
+                            <button
+                                onClick={() => { vouchersService.downloadPDF(newVoucher.id, newVoucher.voucher_number, voucher.director_name); }}
+                                className="flex-1 flex items-center justify-center gap-2 py-3 bg-muted/40 rounded-2xl text-xs font-black uppercase tracking-widest text-muted-foreground hover:bg-muted/60 transition-colors"
+                            >
+                                <FilePlus className="w-4 h-4" /> Download
+                            </button>
+                            <button
+                                onClick={() => { onSuccess(); }}
+                                className="flex-[2] bg-primary text-primary-foreground py-3 rounded-2xl font-black uppercase tracking-widest hover:bg-primary/90 transition-all"
+                            >
+                                Done
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        );
+    }
 
     return (
         <div className="fixed inset-0 z-50 flex items-start md:items-center justify-center p-4 pt-6 bg-primary/20 backdrop-blur-md animate-in fade-in duration-300 overflow-y-auto">

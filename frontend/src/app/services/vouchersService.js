@@ -42,14 +42,18 @@ export const vouchersService = {
         return response.data;
     },
 
-    downloadPDF: async (id, voucherNumber) => {
+    downloadPDF: async (id, voucherNumber, directorName) => {
         const response = await api.get(`/vouchers/${id}/pdf`, {
             responseType: 'blob',
         });
         const url = URL.createObjectURL(new Blob([response.data], { type: 'application/pdf' }));
         const a = document.createElement('a');
         a.href = url;
-        a.download = `${voucherNumber || 'voucher'}.pdf`;
+        // Use director name + voucher number if director is available
+        const safeName = directorName
+            ? `${directorName.replace(/\s+/g, '_')}_${voucherNumber || id}`
+            : (voucherNumber || 'voucher');
+        a.download = `${safeName}.pdf`;
         document.body.appendChild(a);
         a.click();
         document.body.removeChild(a);
