@@ -17,6 +17,7 @@ export default function RecordPaymentModal({ voucher, onClose, onSuccess }) {
 
     const handleSubmit = async (e) => {
         e.preventDefault();
+        if (loading) return;           // guard against double-submit
         setLoading(true);
         setError('');
 
@@ -34,7 +35,7 @@ export default function RecordPaymentModal({ voucher, onClose, onSuccess }) {
 
         let success = false;
         try {
-            // 1. Record the payment on the existing voucher
+            // 1. Record the payment on the existing voucher (updates balance)
             await vouchersService.recordPayment(voucher.id, {
                 amount_paid: parseFloat(amount),
                 payment_method: method,
@@ -42,7 +43,9 @@ export default function RecordPaymentModal({ voucher, onClose, onSuccess }) {
                 notes
             });
 
-            // 2. Generate a new voucher for this payment amount
+            // 2. Generate a new RECEIPT voucher for this specific payment
+            //    This voucher is fully pre-paid (amount_paid = amount) so it shows SETTLED.
+            //    The original voucher's balance was already updated by recordPayment above.
             const generated = await vouchersService.createManual({
                 client_id: voucher.client_id,
                 amount: parseFloat(amount),

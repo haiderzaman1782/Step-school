@@ -19,7 +19,7 @@ export const Voucher = {
         }
         if (search) {
             params.push(`%${search}%`);
-            baseQuery += ` AND (v.voucher_number ILIKE $${params.length} OR c.name ILIKE $${params.length})`;
+            baseQuery += ` AND (v.voucher_number ILIKE $${params.length} OR c.director_name ILIKE $${params.length})`;
         }
 
         const countResult = await pool.query('SELECT COUNT(*)' + baseQuery, params);

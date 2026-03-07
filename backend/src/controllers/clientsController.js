@@ -1,4 +1,5 @@
 import { Client } from '../models/Client.js';
+import { Voucher } from '../models/Voucher.js';
 import pool from '../config/database.js';
 import bcrypt from 'bcryptjs';
 
@@ -109,6 +110,21 @@ export const createClient = async (req, res) => {
                      role = 'client'`,
                 [admin_email.toLowerCase(), hashedPassword, director_name, client.id]
             );
+        }
+
+        // 5. AUTO-GENERATE VOUCHER for total contract amount
+        if (payment_plan && payment_plan.length > 0) {
+            const totalAmount = payment_plan.reduce((sum, p) => sum + (parseFloat(p.amount) || 0), 0);
+            if (totalAmount > 0) {
+                const voucherNumber = await Voucher.generateVoucherNumber(campus_id);
+                await client_db.query(
+                    `INSERT INTO vouchers (
+                        voucher_number, client_id, campus_id, payment_plan_id,
+                        amount, due_date, generated_by_accountant_name, status
+                    ) VALUES ($1, $2, $3, NULL, $4, NOW() + INTERVAL '30 days', $5, 'pending')`,
+                    [voucherNumber, client.id, campus_id, totalAmount, req.user.name]
+                );
+            }
         }
 
         await client_db.query('COMMIT');

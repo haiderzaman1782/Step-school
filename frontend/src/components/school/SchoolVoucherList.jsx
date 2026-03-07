@@ -43,6 +43,7 @@ export default function SchoolVoucherList({ clientId, isClientView = false }) {
     const [paymentModal, setPaymentModal] = useState(null);
     const [showManualModal, setShowManualModal] = useState(false);
     const [detailModal, setDetailModal] = useState(null);
+    const [statusUpdating, setStatusUpdating] = useState(null); // voucherId being updated
     const [offset, setOffset] = useState(0);
     const LIMIT = 20;
 
@@ -90,6 +91,22 @@ export default function SchoolVoucherList({ clientId, isClientView = false }) {
             load();
         } catch (e) {
             alert(e.response?.data?.error || e.message);
+        }
+    };
+
+    const handleStatusChange = async (voucherId, newStatus) => {
+        if (statusUpdating) return;
+        setStatusUpdating(voucherId);
+        try {
+            await vouchersService.updateStatus(voucherId, newStatus);
+            // Optimistically update local state so UI is instant
+            setVouchers(prev => prev.map(v =>
+                v.id === voucherId ? { ...v, status: newStatus } : v
+            ));
+        } catch (e) {
+            alert(e.response?.data?.error || e.message);
+        } finally {
+            setStatusUpdating(null);
         }
     };
 
@@ -209,10 +226,35 @@ export default function SchoolVoucherList({ clientId, isClientView = false }) {
                                             <td className="px-8 py-5 text-right">
                                                 <span className="text-sm font-bold text-destructive">{formatPkr(v.balance)}</span>
                                             </td>
-                                            <td className="px-8 py-5">
-                                                <span className={`inline-flex px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest border ${STATUS_COLORS[v.status] || 'border-border'}`}>
-                                                    {v.status === 'paid' ? 'Settled' : v.status}
-                                                </span>
+                                            <td className="px-8 py-5" onClick={(e) => e.stopPropagation()}>
+                                                {isClientView ? (
+                                                    // Client view: static badge only
+                                                    <span className={`inline-flex px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest border ${STATUS_COLORS[v.status] || 'border-border'}`}>
+                                                        {v.status === 'paid' ? 'Settled' : v.status}
+                                                    </span>
+                                                ) : (
+                                                    // Accountant view: clickable status selector
+                                                    <div className="relative">
+                                                        <select
+                                                            value={v.status}
+                                                            disabled={statusUpdating === v.id}
+                                                            onChange={(e) => handleStatusChange(v.id, e.target.value)}
+                                                            className={`
+                                                                appearance-none cursor-pointer pl-3 pr-7 py-1.5 rounded-full
+                                                                text-[10px] font-black uppercase tracking-widest border
+                                                                focus:outline-none transition-all
+                                                                ${statusUpdating === v.id ? 'opacity-50' : 'hover:opacity-80'}
+                                                                ${STATUS_COLORS[v.status] || 'border-border bg-muted/10 text-muted-foreground'}
+                                                            `}
+                                                        >
+                                                            <option value="pending">Pending</option>
+                                                            <option value="partial">Partial</option>
+                                                            <option value="paid">Settled</option>
+                                                            <option value="cancelled">Cancelled</option>
+                                                        </select>
+                                                        <span className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 text-[8px]">▾</span>
+                                                    </div>
+                                                )}
                                             </td>
                                             {!isClientView && (
                                                 <td className="px-8 py-5 pr-10">

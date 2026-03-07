@@ -37,6 +37,11 @@ export const vouchersService = {
         return response.data;
     },
 
+    updateStatus: async (voucherId, status) => {
+        const response = await api.put(`/vouchers/${voucherId}/payment`, { status });
+        return response.data;
+    },
+
     cancel: async (id) => {
         const response = await api.patch(`/vouchers/${id}/cancel`);
         return response.data;
